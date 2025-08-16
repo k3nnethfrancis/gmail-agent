@@ -1,4 +1,5 @@
 import { google } from 'googleapis';
+import { OAuth2Client } from 'google-auth-library';
 
 // OAuth2 client configuration
 export function createOAuth2Client() {
@@ -18,7 +19,7 @@ export const GOOGLE_SCOPES = [
 ];
 
 // Generate OAuth URL
-export function getAuthUrl(oauth2Client: any) {
+export function getAuthUrl(oauth2Client: OAuth2Client) {
   return oauth2Client.generateAuthUrl({
     access_type: 'offline',
     scope: GOOGLE_SCOPES,
@@ -27,14 +28,14 @@ export function getAuthUrl(oauth2Client: any) {
 }
 
 // Exchange authorization code for tokens
-export async function getTokensFromCode(oauth2Client: any, code: string) {
+export async function getTokensFromCode(oauth2Client: OAuth2Client, code: string) {
   const { tokens } = await oauth2Client.getToken(code);
   oauth2Client.setCredentials(tokens);
   return tokens;
 }
 
 // Refresh access token
-export async function refreshAccessToken(oauth2Client: any, refreshToken: string) {
+export async function refreshAccessToken(oauth2Client: OAuth2Client, refreshToken: string) {
   oauth2Client.setCredentials({
     refresh_token: refreshToken,
   });
@@ -44,7 +45,7 @@ export async function refreshAccessToken(oauth2Client: any, refreshToken: string
 }
 
 // Create authenticated client with tokens
-export function createAuthenticatedClient(tokens: any) {
+export function createAuthenticatedClient(tokens: { access_token?: string; refresh_token?: string; expiry_date?: number }) {
   const oauth2Client = createOAuth2Client();
   oauth2Client.setCredentials(tokens);
   return oauth2Client;
