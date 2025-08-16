@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-Building a unified Next.js web application that combines calendar management and email management through a single chat interface, powered by Claude Code SDK with direct tool function integration.
+Building a unified Next.js web application that combines calendar management and email management through a single chat interface, powered by Anthropic AI SDK with direct tool function integration and intelligent agentic workflows.
 
 ## Simplified Architecture
 
@@ -134,18 +134,26 @@ Agent: *Calls listEvents() for last 30 days*
 - ✅ Working test interface with real Google API calls
 - ✅ Secure token management with HTTP-only cookies
 
-### Week 2: Claude SDK Integration
-**Phase 2A: Basic Chat Setup**
-- 📋 Install Claude SDK and set up /api/chat route
-- 📋 Create ChatInterface component with message handling
-- 📋 Test basic chat with tool function calls
-- 📋 Add streaming response support
+### Week 2: Claude SDK Integration ✅
+**Phase 2A: Basic Chat Setup** ✅
+- ✅ Install Anthropic AI SDK and set up /api/chat route
+- ✅ Create ChatInterface component with message handling
+- ✅ Test basic chat with tool function calls
+- ✅ Add streaming response support via /api/chat-stream
 
-**Phase 2B: Enhanced Chat Experience**
-- 📋 Add tool execution visibility (show when Claude calls APIs)
-- 📋 Handle authentication state in chat context
-- 📋 Error handling for tool failures
-- 📋 Message history and conversation management
+**Phase 2B: Enhanced Chat Experience** ✅
+- ✅ Add agentic workflow support (autonomous multi-step task execution)
+- ✅ All 8 calendar and email tools exposed to Claude
+- ✅ Handle authentication state in chat context
+- ✅ Comprehensive error handling for tool failures
+- ✅ Message history and conversation management
+- ✅ Enterprise-level code quality (TypeScript/ESLint compliance)
+
+**Phase 2C: Progressive Feedback** 🔄 (Current - feature/progressive-feedback branch)
+- ✅ Basic streaming progress updates implemented
+- 🔄 Intelligent progress message generation (in progress)
+- 📋 Visual calendar widget integration
+- 📋 DRY architecture for multiple UI components
 
 ### Week 3: UI Feature Development
 **Phase 3A: Calendar Assistant Interface**
@@ -307,4 +315,248 @@ export async function listEvents(
 5. Claude: Re-classifies emails with new category
 6. UI: EmailBuckets updates with new classification
 
--- Claude | 2025-08-16 (Updated: Added detailed Phase 2 implementation plan)
+## Current Development Status
+
+### Completed Features ✅
+- **Agentic Workflow System**: Autonomous multi-step task execution with 15 iteration/50 tool call safety limits
+- **Complete Tool Integration**: All 8 calendar and email tools (list_events, create_event, update_event, delete_event, get_freebusy, create_time_block, list_threads, classify_emails)
+- **Dual API Architecture**: Standard `/api/chat` for complete responses + `/api/chat-stream` for progressive feedback
+- **Enterprise Code Quality**: Zero TypeScript/ESLint violations, comprehensive error handling
+- **Real OAuth Integration**: Working Google Calendar and Gmail API with HTTP-only cookie auth
+
+### Current Challenge: Progressive Feedback UX
+**Issue**: Users see generic "Claude is thinking..." followed by tool-specific messages, resulting in redundant progress blocks.
+
+**Current Behavior** (Suboptimal):
+```
+✅ Blocking time for you...     
+🔄 Claude is thinking...        <- Generic, not helpful
+```
+
+**Target Behavior** (Intelligent):
+```
+🔄 Analyzing your schedule for next week...
+✅ Created 5 workout blocks (7-9 AM Mon-Fri)
+🔄 Finding optimal meeting times...  
+✅ Scheduled meeting with Joe (Mon 1-2 PM)
+```
+
+## Phase 2C: Intelligent Progress Messaging
+
+### Architecture Design
+
+#### Core Concept: Dual-Claude System
+```
+Primary Claude (Tool Execution)
+    ↓ (detects tool calls)
+Secondary Claude (Progress Narrator)
+    ↓ (generates contextual messages)
+Frontend (Updates UI in real-time)
+```
+
+#### Implementation Strategy
+
+**1. Tool Call Detection & Context Analysis**
+```typescript
+// When primary Claude makes tool calls, extract context
+interface ToolCallContext {
+  toolName: string;
+  toolInput: unknown;
+  workflowPhase: 'planning' | 'executing' | 'finalizing';
+  previousTools: string[];
+  userRequest: string;
+}
+```
+
+**2. Progress Message Generation Service**
+```typescript
+// New service: src/services/progressNarrator.ts
+class ProgressNarrator {
+  async generateMessage(context: ToolCallContext): Promise<string> {
+    const prompt = `Based on this tool execution context, write a SHORT (3-5 words) progress message for the user:
+    
+    Tool: ${context.toolName}
+    User's original request: ${context.userRequest}
+    Previous actions: ${context.previousTools.join(', ')}
+    
+    Examples:
+    - "Checking your calendar..."
+    - "Scheduling with Joe..."
+    - "Blocking workout time..."
+    
+    Be specific and contextual, not generic.`;
+    
+    return await this.callClaudeForMessage(prompt);
+  }
+}
+```
+
+**3. Enhanced Streaming Architecture**
+```typescript
+// Modified /api/chat-stream/route.ts
+async function processToolCalls(toolCalls: ToolCall[], context: WorkflowContext) {
+  for (const toolCall of toolCalls) {
+    // Generate intelligent progress message
+    const progressMessage = await progressNarrator.generateMessage({
+      toolName: toolCall.name,
+      toolInput: toolCall.input,
+      userRequest: context.originalRequest,
+      previousTools: context.completedTools
+    });
+    
+    // Send contextual progress update
+    sendSSEMessage(controller, 'progress', progressMessage);
+    
+    // Execute actual tool
+    const result = await executeTool(toolCall);
+    
+    // Send completion update
+    sendSSEMessage(controller, 'tool_complete', { 
+      tool: toolCall.name, 
+      success: result.success 
+    });
+  }
+}
+```
+
+### Implementation Steps
+
+#### Step 1: Progress Narrator Service
+**File**: `src/services/progressNarrator.ts`
+- Create separate Claude instance for message generation
+- Design context-aware prompts for different tool types
+- Implement caching for similar tool call patterns
+- Keep messages under 50 characters for UI responsiveness
+
+#### Step 2: Enhanced Tool Context Tracking
+**File**: `src/app/api/chat-stream/route.ts`
+- Track workflow state (planning → executing → finalizing)
+- Maintain history of completed tools
+- Extract semantic context from tool inputs (e.g., meeting attendee names)
+
+#### Step 3: Frontend Progress State Management
+**File**: `src/components/ChatInterface.tsx`
+- Single progress message that updates in-place
+- Smooth transitions between progress states
+- Visual indicators for different workflow phases
+
+#### Step 4: DRY Architecture for Multiple UIs
+**Preparation for Calendar Widget Integration**
+
+```typescript
+// src/hooks/useAgenticWorkflow.ts
+export function useAgenticWorkflow() {
+  return {
+    startWorkflow: (message: string) => Promise<void>,
+    progressState: ProgressState,
+    workflowResults: WorkflowResults,
+    isComplete: boolean
+  };
+}
+
+// Both ChatInterface and CalendarWidget can use this hook
+```
+
+### Detailed Implementation Plan
+
+#### Phase 2C.1: Core Progress Narrator (Current Sprint)
+**Branch**: `feature/progressive-feedback`
+
+**Tasks**:
+1. **Create ProgressNarrator Service**
+   - Setup separate Claude instance with specialized prompts
+   - Design message generation for each tool type
+   - Implement message caching and deduplication
+
+2. **Enhance Tool Context Detection**
+   - Extract meaningful context from tool inputs
+   - Track workflow progression state
+   - Build semantic understanding of user intent
+
+3. **Update Streaming API**
+   - Integrate progress narrator into tool execution loop
+   - Replace generic messages with intelligent ones
+   - Ensure single progress message updates in-place
+
+4. **Frontend State Management**
+   - Modify ChatInterface to handle single updating progress message
+   - Add visual transitions for better UX
+   - Test with complex multi-step workflows
+
+**Expected Outcome**: Intelligent, contextual progress messages that replace generic "thinking" indicators.
+
+#### Phase 2C.2: DRY Architecture Foundation
+**Preparation for**: Calendar widget integration (next branch)
+
+**Tasks**:
+1. **Extract Workflow Logic**
+   - Create `useAgenticWorkflow` hook
+   - Separate business logic from UI components
+   - Design unified progress state management
+
+2. **Reusable Progress Components**
+   - Create `<ProgressIndicator />` component
+   - Design for use in both chat and calendar widgets
+   - Implement consistent visual language
+
+3. **Testing & Documentation**
+   - Comprehensive testing of progress messaging
+   - Document architecture for calendar widget team
+   - Performance optimization for rapid tool execution
+
+### Success Metrics
+
+#### User Experience
+- ✅ No redundant progress messages
+- ✅ Contextual, specific progress updates
+- ✅ Smooth visual transitions between states
+- ✅ Under 3-second perceived wait time for complex workflows
+
+#### Technical Architecture
+- ✅ DRY code structure ready for calendar widget
+- ✅ Performant progress message generation (<200ms)
+- ✅ Reliable streaming with proper error handling
+- ✅ Scalable for additional UI components
+
+### Next Phases (Post-2C)
+
+#### Phase 3A: Calendar Widget Integration
+**Branch**: `feature/calendar-widget`
+- Visual calendar grid showing Google Calendar events
+- Real-time updates when agentic workflows create/modify events
+- Uses shared progress architecture from Phase 2C
+
+#### Phase 3B: Enhanced Intelligence
+- ML-based email classification
+- Predictive scheduling suggestions
+- Cross-component data synchronization
+
+### Testing Strategy
+
+#### Manual Testing Scenarios
+1. **Complex Calendar Workflow**: "Schedule 3 meetings + workout blocks + email drafts"
+2. **Email Management**: "Classify last 50 emails and create newsletter label"
+3. **Mixed Operations**: "Cancel tomorrow's meetings and reschedule for next week"
+
+#### Expected Progress Messages
+```
+Complex Calendar Workflow:
+🔄 Analyzing your schedule for next week...
+✅ Created 5 workout blocks (Mon-Fri 7-9 AM)
+🔄 Finding optimal afternoon meeting slots...
+✅ Scheduled meeting with Joe (Mon 1-2 PM)
+✅ Scheduled meeting with Dan (Tue 4-5 PM)
+✅ Scheduled meeting with Sally (Wed 4-5 PM)
+🔄 Drafting meeting invitation emails...
+✅ All meetings scheduled and emails drafted!
+```
+
+### Code Quality Standards
+
+- **Type Safety**: All progress messaging strongly typed
+- **Performance**: Progress messages generated in <200ms
+- **Error Handling**: Graceful fallback to generic messages if narrator fails
+- **Testing**: Unit tests for all progress generation scenarios
+- **Documentation**: Comprehensive API docs for calendar widget integration
+
+-- Claude | 2025-08-16 (Updated: Added Phase 2C intelligent progress messaging implementation plan)

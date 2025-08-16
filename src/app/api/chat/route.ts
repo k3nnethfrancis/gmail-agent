@@ -325,6 +325,18 @@ IMPORTANT: Continue using tools until the entire user request is satisfied. When
     let totalToolCalls = 0;
     const maxToolCalls = 50; // Additional safety limit
     
+    // Track progress for user feedback
+    const progressUpdates: string[] = [];
+    const addProgressUpdate = (update: string) => {
+      progressUpdates.push(`⏳ ${update}`);
+      console.warn(`[${timestamp}] 📋 Progress: ${update}`);
+    };
+    
+    // TODO(human): Implement real-time progress streaming here
+    // We need to send intermediate progress messages to the frontend
+    // while the agentic workflow is still running, rather than waiting
+    // until the entire workflow completes.
+    
     while (iterationCount < maxIterations && totalToolCalls < maxToolCalls) {
       const currentContentBlocks = currentResponse.content as ContentBlock[];
       const toolCalls = currentContentBlocks.filter(block => block.type === 'tool_use');
@@ -343,6 +355,21 @@ IMPORTANT: Continue using tools until the entire user request is satisfied. When
       for (const block of toolCalls) {
         const { name, input, id } = block as { type: 'tool_use'; name: string; input: unknown; id: string };
         console.warn(`[${timestamp}] 🛠️ Calling tool: ${name}`);
+        
+        // Add user-friendly progress update
+        const toolProgressMap: Record<string, string> = {
+          'list_events': 'Checking your calendar...',
+          'create_event': 'Creating calendar event...',
+          'update_event': 'Updating calendar event...',
+          'delete_event': 'Removing calendar event...',
+          'get_freebusy': 'Checking availability...',
+          'create_time_block': 'Blocking time for you...',
+          'list_threads': 'Reviewing your emails...',
+          'classify_emails': 'Organizing your inbox...',
+        };
+        
+        const progressMessage = toolProgressMap[name] || `Processing ${name}...`;
+        addProgressUpdate(progressMessage);
         
         try {
           let result:
@@ -510,14 +537,21 @@ IMPORTANT: Continue using tools until the entire user request is satisfied. When
       .map(block => block.text)
       .join('');
 
-    console.warn(`[${timestamp}] ✅ Chat API success - Response length: ${textContent.length} chars, stop_reason: ${finalResponse.stop_reason}`);
+    // Add progress summary if this was a multi-step workflow
+    let enhancedResponse = textContent;
+    if (progressUpdates.length > 1) {
+      const progressSummary = progressUpdates.map(update => `${update} ✅`).join('\n');
+      enhancedResponse = `**Workflow Progress:**\n${progressSummary}\n\n---\n\n${textContent}`;
+    }
+
+    console.warn(`[${timestamp}] ✅ Chat API success - Response length: ${enhancedResponse.length} chars, ${progressUpdates.length} progress updates, stop_reason: ${finalResponse.stop_reason}`);
 
     return NextResponse.json({
-      response: textContent,
+      response: enhancedResponse,
       conversation: [
         ...conversation,
         { role: 'user', content: message },
-        { role: 'assistant', content: textContent },
+        { role: 'assistant', content: enhancedResponse },
       ],
     });
 

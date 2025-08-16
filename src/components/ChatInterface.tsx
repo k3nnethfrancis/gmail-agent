@@ -44,10 +44,12 @@ export default function ChatInterface({ className = '' }: ChatInterfaceProps) {
     setInput('');
     setIsLoading(true);
 
+    // Claude Code style - start conversation, Claude will respond first
+
     try {
-      const response = await fetch('/api/chat', {
+      const response = await fetch('/api/chat-stream', {
         method: 'POST',
-        credentials: 'include', // This ensures cookies are sent
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
         },
@@ -58,21 +60,87 @@ export default function ChatInterface({ className = '' }: ChatInterfaceProps) {
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to send message');
+        throw new Error('Failed to start streaming');
       }
 
-      const data = await response.json();
-      
-      const assistantMessage: Message = {
-        role: 'assistant',
-        content: data.response,
-        timestamp: new Date(),
-      };
+      const reader = response.body?.getReader();
+      if (!reader) {
+        throw new Error('No response stream available');
+      }
 
-      setMessages(prev => [...prev, assistantMessage]);
+      // Claude Code style streaming - no need to track final response
+      
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          const chunk = new TextDecoder().decode(value);
+          const lines = chunk.split('\n').filter(line => line.trim());
+
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              try {
+                const data = JSON.parse(line.slice(6));
+                
+                switch (data.type) {
+                  case 'claude_response':
+                    // Claude Code style: Add Claude's text response as a new message
+                    const claudeMessage: Message = {
+                      role: 'assistant',
+                      content: data.data,
+                      timestamp: new Date(),
+                    };
+                    setMessages(prev => [...prev, claudeMessage]);
+                    break;
+                    
+                  case 'tool_call':
+                    // Claude Code style: Show tool call execution
+                    const toolCallMessage: Message = {
+                      role: 'assistant',
+                      content: `⏺ ${data.data.display}`,
+                      timestamp: new Date(),
+                    };
+                    setMessages(prev => [...prev, toolCallMessage]);
+                    break;
+                    
+                  case 'tool_result':
+                    // Claude Code style: Show tool result as separate message (cleaner)
+                    const resultIcon = data.data.success ? '⎿' : '❌';
+                    const toolResultMessage: Message = {
+                      role: 'assistant',
+                      content: `  ${resultIcon} ${data.data.summary}`,
+                      timestamp: new Date(),
+                    };
+                    setMessages(prev => [...prev, toolResultMessage]);
+                    break;
+                    
+                  case 'done':
+                    // Conversation complete - no special handling needed
+                    break;
+                    
+                  case 'error':
+                    // Show error as a message
+                    const errorMessage: Message = {
+                      role: 'assistant',
+                      content: `❌ Error: ${data.data}`,
+                      timestamp: new Date(),
+                    };
+                    setMessages(prev => [...prev, errorMessage]);
+                    break;
+                }
+              } catch (parseError) {
+                console.warn('Failed to parse SSE data:', parseError);
+              }
+            }
+          }
+        }
+      } finally {
+        reader.releaseLock();
+      }
+
     } catch (error: any) {
-      console.error('Chat error:', error);
+      console.error('Streaming chat error:', error);
       
       const errorMessage: Message = {
         role: 'assistant',
@@ -170,7 +238,7 @@ export default function ChatInterface({ className = '' }: ChatInterfaceProps) {
             <div className="bg-gray-100 text-gray-900 px-4 py-2 rounded-lg">
               <div className="flex items-center space-x-2">
                 <Loader className="w-4 h-4 animate-spin" />
-                <p className="text-sm">Claude is thinking...</p>
+                <p className="text-sm">Thinking...</p>
               </div>
             </div>
           </div>
