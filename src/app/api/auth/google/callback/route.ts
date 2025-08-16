@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
     const tokens = await getTokensFromCode(oauth2Client, code);
 
     // Store tokens in secure HTTP-only cookies
-    const cookieStore = cookies();
+    const cookieStore = await cookies();
     
     // Set access token (shorter expiry)
     cookieStore.set('google_access_token', tokens.access_token!, {

@@ -5,6 +5,7 @@ import { Send, Loader } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 
 interface Message {
+  id: string;
   role: 'user' | 'assistant';
   content: string;
   timestamp: Date;
@@ -17,11 +18,13 @@ interface ChatInterfaceProps {
 export default function ChatInterface({ className = '' }: ChatInterfaceProps) {
   const [messages, setMessages] = useState<Message[]>([
     {
+      id: `${Date.now()}-welcome`,
       role: 'assistant',
       content: 'Hi! I can help you manage your calendar and emails. Try asking me "What meetings do I have today?" or "Classify my recent emails".',
       timestamp: new Date(),
     },
   ]);
+  const abortRef = useRef<AbortController | null>(null);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -35,6 +38,7 @@ export default function ChatInterface({ className = '' }: ChatInterfaceProps) {
     if (!input.trim() || isLoading) return;
 
     const userMessage: Message = {
+      id: crypto.randomUUID?.() ?? String(Date.now()),
       role: 'user',
       content: input.trim(),
       timestamp: new Date(),
@@ -44,10 +48,17 @@ export default function ChatInterface({ className = '' }: ChatInterfaceProps) {
     setInput('');
     setIsLoading(true);
 
+    // Claude Code style - start conversation, Claude will respond first
+
     try {
-      const response = await fetch('/api/chat', {
+      // Abort any previous stream
+      abortRef.current?.abort();
+      const ac = new AbortController();
+      abortRef.current = ac;
+
+      const response = await fetch('/api/chat-stream', {
         method: 'POST',
-        credentials: 'include', // This ensures cookies are sent
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
         },
@@ -55,24 +66,92 @@ export default function ChatInterface({ className = '' }: ChatInterfaceProps) {
           message: userMessage.content,
           conversation: messages.map(m => ({ role: m.role, content: m.content })),
         }),
+        signal: ac.signal,
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to send message');
+        throw new Error('Failed to start streaming');
       }
 
-      const data = await response.json();
-      
-      const assistantMessage: Message = {
-        role: 'assistant',
-        content: data.response,
-        timestamp: new Date(),
-      };
+      const reader = response.body?.getReader();
+      if (!reader) {
+        throw new Error('No response stream available');
+      }
 
-      setMessages(prev => [...prev, assistantMessage]);
+      // Buffered SSE parsing
+      const decoder = new TextDecoder();
+      let buffer = '';
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+
+          let idx;
+          while ((idx = buffer.indexOf('\n\n')) !== -1) {
+            const raw = buffer.slice(0, idx).trim();
+            buffer = buffer.slice(idx + 2);
+            if (!raw.startsWith('data: ')) continue;
+            try {
+              const data = JSON.parse(raw.slice(6));
+              switch (data.type) {
+                case 'claude_response': {
+                  const claudeMessage: Message = {
+                    id: crypto.randomUUID?.() ?? String(Date.now()),
+                    role: 'assistant',
+                    content: data.data,
+                    timestamp: new Date(),
+                  };
+                  setMessages(prev => [...prev, claudeMessage]);
+                  break;
+                }
+                case 'tool_call': {
+                  const toolCallMessage: Message = {
+                    id: crypto.randomUUID?.() ?? String(Date.now()),
+                    role: 'assistant',
+                    content: `⏺ ${data.data.display}`,
+                    timestamp: new Date(),
+                  };
+                  setMessages(prev => [...prev, toolCallMessage]);
+                  break;
+                }
+                case 'tool_result': {
+                  const resultIcon = data.data.success ? '⎿' : '❌';
+                  const toolResultMessage: Message = {
+                    id: crypto.randomUUID?.() ?? String(Date.now()),
+                    role: 'assistant',
+                    content: `  ${resultIcon} ${data.data.summary}`,
+                    timestamp: new Date(),
+                  };
+                  setMessages(prev => [...prev, toolResultMessage]);
+                  break;
+                }
+                case 'error': {
+                  const errorMessage: Message = {
+                    id: crypto.randomUUID?.() ?? String(Date.now()),
+                    role: 'assistant',
+                    content: `❌ Error: ${data.data}`,
+                    timestamp: new Date(),
+                  };
+                  setMessages(prev => [...prev, errorMessage]);
+                  break;
+                }
+                case 'done':
+                  break;
+              }
+            } catch (parseError) {
+              console.warn('Failed to parse SSE data:', parseError);
+            }
+          }
+        }
+      } finally {
+        reader.releaseLock();
+        abortRef.current = null;
+      }
+
     } catch (error: any) {
-      console.error('Chat error:', error);
+      console.error('Streaming chat error:', error);
       
       const errorMessage: Message = {
         role: 'assistant',
@@ -86,7 +165,7 @@ export default function ChatInterface({ className = '' }: ChatInterfaceProps) {
     }
   };
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
+  const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       sendMessage();
@@ -170,7 +249,7 @@ export default function ChatInterface({ className = '' }: ChatInterfaceProps) {
             <div className="bg-gray-100 text-gray-900 px-4 py-2 rounded-lg">
               <div className="flex items-center space-x-2">
                 <Loader className="w-4 h-4 animate-spin" />
-                <p className="text-sm">Claude is thinking...</p>
+                <p className="text-sm">Thinking...</p>
               </div>
             </div>
           </div>
@@ -186,7 +265,7 @@ export default function ChatInterface({ className = '' }: ChatInterfaceProps) {
           <textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            onKeyPress={handleKeyPress}
+            onKeyDown={handleKeyDown}
             placeholder="Ask about your calendar or emails..."
             className="flex-1 resize-none border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             rows={1}
