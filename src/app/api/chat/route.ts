@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import Anthropic from '@anthropic-ai/sdk';
-import * as calendarTools from '@/tools/calendar';
-import * as gmailTools from '@/tools/gmail';
+import { createSystemPrompt, tools } from '@/lib/agentConfig';
+import { executeTool, type ToolContext } from '@/lib/toolRegistry';
 
 // Type definitions
 type ContentBlock = 
