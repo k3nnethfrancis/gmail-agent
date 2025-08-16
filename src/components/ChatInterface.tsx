@@ -94,7 +94,7 @@ export default function ChatInterface({ className = '' }: ChatInterfaceProps) {
   };
 
   return (
-    <div className={`flex flex-col h-full bg-white rounded-lg shadow ${className}`}>
+    <div className={`flex flex-col h-full max-h-full bg-white rounded-lg shadow overflow-hidden ${className}`}>
       {/* Header */}
       <div className="p-4 border-b border-gray-200">
         <h2 className="text-lg font-semibold text-gray-900">
@@ -106,7 +106,7 @@ export default function ChatInterface({ className = '' }: ChatInterfaceProps) {
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4 min-h-0">
+      <div className="flex-1 overflow-y-auto p-4 space-y-4 min-h-0 max-h-full">
         {messages.map((message, index) => (
           <div
             key={index}
