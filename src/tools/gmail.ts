@@ -53,18 +53,12 @@ function getGmailClient(accessToken: string, refreshToken?: string) {
  */
 export async function listThreads(
   accessToken: string,
-  options: ListThreadsOptions = {},
+  options?: ListThreadsOptions,
   refreshToken?: string
 ) {
+  const { maxResults = 50, labelIds, q, pageToken } = options ?? {};
   try {
     const gmail = getGmailClient(accessToken, refreshToken);
-    
-    const {
-      maxResults = 50,
-      labelIds,
-      q,
-      pageToken,
-    } = options;
 
     const response = await gmail.users.threads.list({
       userId: 'me',
@@ -80,11 +74,12 @@ export async function listThreads(
       nextPageToken: response.data.nextPageToken,
       resultSizeEstimate: response.data.resultSizeEstimate,
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     console.error('Gmail listThreads error:', error);
     return {
       success: false,
-      error: error.message || 'Failed to list threads',
+      error: errorMessage || 'Failed to list threads',
     };
   }
 }
@@ -109,11 +104,12 @@ export async function getThread(
       success: true,
       thread: response.data,
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     console.error('Gmail getThread error:', error);
     return {
       success: false,
-      error: error.message || 'Failed to get thread',
+      error: errorMessage || 'Failed to get thread',
     };
   }
 }
@@ -168,11 +164,12 @@ export async function sendEmail(
       success: true,
       message: response.data,
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     console.error('Gmail sendEmail error:', error);
     return {
       success: false,
-      error: error.message || 'Failed to send email',
+      error: errorMessage || 'Failed to send email',
     };
   }
 }
@@ -201,11 +198,12 @@ export async function createLabel(
       success: true,
       label: response.data,
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     console.error('Gmail createLabel error:', error);
     return {
       success: false,
-      error: error.message || 'Failed to create label',
+      error: errorMessage || 'Failed to create label',
     };
   }
 }
@@ -234,11 +232,12 @@ export async function addLabel(
       success: true,
       thread: response.data,
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     console.error('Gmail addLabel error:', error);
     return {
       success: false,
-      error: error.message || 'Failed to add label',
+      error: errorMessage || 'Failed to add label',
     };
   }
 }
@@ -266,11 +265,12 @@ export async function archiveThread(
       success: true,
       thread: response.data,
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     console.error('Gmail archiveThread error:', error);
     return {
       success: false,
-      error: error.message || 'Failed to archive thread',
+      error: errorMessage || 'Failed to archive thread',
     };
   }
 }
@@ -282,9 +282,10 @@ export async function archiveThread(
 export async function classifyEmails(
   accessToken: string,
   threadIds: string[],
-  categories: string[] = ['Important', 'Can wait', 'Auto-archive', 'Newsletter'],
+  categories?: string[],
   refreshToken?: string
 ): Promise<{ success: boolean; classifications?: Array<{ threadId: string; category: string; confidence: number }>; error?: string }> {
+  const cats = categories ?? ['Important', 'Can wait', 'Auto-archive', 'Newsletter'];
   try {
     const gmail = getGmailClient(accessToken, refreshToken);
     const classifications = [];
@@ -331,11 +332,12 @@ export async function classifyEmails(
       success: true,
       classifications,
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     console.error('Gmail classifyEmails error:', error);
     return {
       success: false,
-      error: error.message || 'Failed to classify emails',
+      error: errorMessage || 'Failed to classify emails',
     };
   }
 }

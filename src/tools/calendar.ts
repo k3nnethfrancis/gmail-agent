@@ -78,11 +78,12 @@ export async function listEvents(
       events: response.data.items || [],
       nextPageToken: response.data.nextPageToken,
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     console.error('Calendar listEvents error:', error);
     return {
       success: false,
-      error: error.message || 'Failed to list events',
+      error: errorMessage || 'Failed to list events',
     };
   }
 }
@@ -93,14 +94,15 @@ export async function listEvents(
 export async function createEvent(
   accessToken: string,
   eventData: CalendarEvent,
-  calendarId: string = 'primary',
+  calendarId: string,
   refreshToken?: string
 ) {
+  const cid = calendarId ?? 'primary';
   try {
     const calendar = getCalendarClient(accessToken, refreshToken);
 
     const response = await calendar.events.insert({
-      calendarId,
+      calendarId: cid,
       requestBody: eventData,
     });
 
@@ -108,11 +110,12 @@ export async function createEvent(
       success: true,
       event: response.data,
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     console.error('Calendar createEvent error:', error);
     return {
       success: false,
-      error: error.message || 'Failed to create event',
+      error: errorMessage || 'Failed to create event',
     };
   }
 }
@@ -124,14 +127,15 @@ export async function updateEvent(
   accessToken: string,
   eventId: string,
   eventData: Partial<CalendarEvent>,
-  calendarId: string = 'primary',
+  calendarId: string,
   refreshToken?: string
 ) {
+  const cid = calendarId ?? 'primary';
   try {
     const calendar = getCalendarClient(accessToken, refreshToken);
 
     const response = await calendar.events.update({
-      calendarId,
+      calendarId: cid,
       eventId,
       requestBody: eventData,
     });
@@ -140,11 +144,12 @@ export async function updateEvent(
       success: true,
       event: response.data,
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     console.error('Calendar updateEvent error:', error);
     return {
       success: false,
-      error: error.message || 'Failed to update event',
+      error: errorMessage || 'Failed to update event',
     };
   }
 }
@@ -155,25 +160,27 @@ export async function updateEvent(
 export async function deleteEvent(
   accessToken: string,
   eventId: string,
-  calendarId: string = 'primary',
+  calendarId: string,
   refreshToken?: string
 ) {
+  const cid = calendarId ?? 'primary';
   try {
     const calendar = getCalendarClient(accessToken, refreshToken);
 
     await calendar.events.delete({
-      calendarId,
+      calendarId: cid,
       eventId,
     });
 
     return {
       success: true,
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     console.error('Calendar deleteEvent error:', error);
     return {
       success: false,
-      error: error.message || 'Failed to delete event',
+      error: errorMessage || 'Failed to delete event',
     };
   }
 }
@@ -185,9 +192,10 @@ export async function getFreeBusy(
   accessToken: string,
   timeMin: string,
   timeMax: string,
-  calendarIds: string[] = ['primary'],
+  calendarIds: string[],
   refreshToken?: string
 ) {
+  const cids = calendarIds.length > 0 ? calendarIds : ['primary'];
   try {
     const calendar = getCalendarClient(accessToken, refreshToken);
 
@@ -195,7 +203,7 @@ export async function getFreeBusy(
       requestBody: {
         timeMin,
         timeMax,
-        items: calendarIds.map(id => ({ id })),
+        items: cids.map(id => ({ id })),
       },
     });
 
@@ -203,11 +211,12 @@ export async function getFreeBusy(
       success: true,
       calendars: response.data.calendars || {},
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     console.error('Calendar getFreeBusy error:', error);
     return {
       success: false,
-      error: error.message || 'Failed to get free/busy information',
+      error: errorMessage || 'Failed to get free/busy information',
     };
   }
 }
@@ -221,9 +230,10 @@ export async function createTimeBlock(
   endTime: string,
   title: string,
   description?: string,
-  calendarId: string = 'primary',
+  calendarId?: string,
   refreshToken?: string
 ) {
+  const cid = calendarId ?? 'primary';
   const eventData: CalendarEvent = {
     summary: title,
     description,
@@ -232,5 +242,5 @@ export async function createTimeBlock(
     reminders: { useDefault: false },
   };
 
-  return createEvent(accessToken, eventData, calendarId, refreshToken);
+  return createEvent(accessToken, eventData, cid, refreshToken);
 }
