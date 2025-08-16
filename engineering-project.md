@@ -18,4 +18,4 @@ Then, allow the users to create their own buckets, outside of the default option
 
 ## Objective
 
-Lets combine these two projects. We will use the claude code sdk coupled with MCPs that enable both of these features.
+Lets combine these two projects. We will use the claude code sdk coupled with MCPs that enable both of these features. 
