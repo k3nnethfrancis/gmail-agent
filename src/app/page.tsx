@@ -1,103 +1,120 @@
-import Image from "next/image";
+'use client';
+
+import { useState, useEffect } from 'react';
 
 export default function Home() {
-  return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+  const [authStatus, setAuthStatus] = useState<'unknown' | 'authenticated' | 'unauthenticated'>('unknown');
+  const [testResults, setTestResults] = useState<any[]>([]);
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+  useEffect(() => {
+    // Check URL params for auth status
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('auth') === 'success') {
+      setAuthStatus('authenticated');
+    } else if (urlParams.get('error')) {
+      setAuthStatus('unauthenticated');
+    }
+  }, []);
+
+  const handleGoogleLogin = () => {
+    window.location.href = '/api/auth/google/login';
+  };
+
+  const testCalendar = async () => {
+    try {
+      const response = await fetch('/api/test/calendar');
+      const result = await response.json();
+      setTestResults(prev => [...prev, { type: 'Calendar', ...result }]);
+    } catch (error) {
+      setTestResults(prev => [...prev, { type: 'Calendar', error: 'Failed to test' }]);
+    }
+  };
+
+  const testGmail = async () => {
+    try {
+      const response = await fetch('/api/test/gmail');
+      const result = await response.json();
+      setTestResults(prev => [...prev, { type: 'Gmail', ...result }]);
+    } catch (error) {
+      setTestResults(prev => [...prev, { type: 'Gmail', error: 'Failed to test' }]);
+    }
+  };
+
+  return (
+    <div className="min-h-screen p-8 bg-gray-50">
+      <div className="max-w-4xl mx-auto">
+        <h1 className="text-3xl font-bold text-gray-900 mb-8">
+          Calendar Assistant + Inbox Concierge
+        </h1>
+        
+        <div className="bg-white p-6 rounded-lg shadow mb-8">
+          <h2 className="text-xl font-semibold mb-4">Authentication Status</h2>
+          
+          {authStatus === 'unknown' && (
+            <div className="text-gray-600">
+              <p className="mb-4">Connect your Google account to get started</p>
+              <button
+                onClick={handleGoogleLogin}
+                className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700"
+              >
+                Connect Google Account
+              </button>
+            </div>
+          )}
+          
+          {authStatus === 'authenticated' && (
+            <div className="text-green-600">
+              <p className="mb-4">✅ Successfully authenticated with Google</p>
+              <div className="space-x-4">
+                <button
+                  onClick={testCalendar}
+                  className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
+                >
+                  Test Calendar API
+                </button>
+                <button
+                  onClick={testGmail}
+                  className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+                >
+                  Test Gmail API
+                </button>
+              </div>
+            </div>
+          )}
+          
+          {authStatus === 'unauthenticated' && (
+            <div className="text-red-600">
+              <p className="mb-4">❌ Authentication failed</p>
+              <button
+                onClick={handleGoogleLogin}
+                className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700"
+              >
+                Try Again
+              </button>
+            </div>
+          )}
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+
+        {testResults.length > 0 && (
+          <div className="bg-white p-6 rounded-lg shadow">
+            <h2 className="text-xl font-semibold mb-4">Test Results</h2>
+            <div className="space-y-4">
+              {testResults.map((result, index) => (
+                <div key={index} className="border-l-4 border-blue-500 pl-4">
+                  <h3 className="font-semibold">{result.type} API Test</h3>
+                  <pre className="text-sm text-gray-600 bg-gray-100 p-2 rounded mt-2 overflow-x-auto">
+                    {JSON.stringify(result, null, 2)}
+                  </pre>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div className="mt-8 text-center text-gray-500">
+          <p>Foundation testing - Google APIs without AI integration</p>
+        </div>
+      </div>
     </div>
   );
 }
