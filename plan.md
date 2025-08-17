@@ -4,6 +4,17 @@
 
 Building a unified Next.js web application that combines calendar management and email management through a single chat interface, powered by Anthropic AI SDK with direct tool function integration and intelligent agentic workflows.
 
+**Current Status**: Production-ready conversational UX complete, working on calendar widget (Phase 3A)
+**Branch**: `dev` (all latest improvements)
+**Port**: `3000` (npm run dev)
+**Key Files**: See CLAUDE.md for comprehensive context
+
+### Prerequisites
+- Google OAuth credentials configured
+- ANTHROPIC_API_KEY set in .env.local
+- Working Google Calendar and Gmail API access
+- Next.js 15 with TypeScript and Tailwind CSS
+
 ## Simplified Architecture
 
 ```
@@ -149,18 +160,22 @@ Agent: *Calls listEvents() for last 30 days*
 - ✅ Message history and conversation management
 - ✅ Enterprise-level code quality (TypeScript/ESLint compliance)
 
-**Phase 2C: Progressive Feedback** 🔄 (Current - feature/progressive-feedback branch)
-- ✅ Basic streaming progress updates implemented
-- 🔄 Intelligent progress message generation (in progress)
-- 📋 Visual calendar widget integration
-- 📋 DRY architecture for multiple UI components
+**Phase 2C: Progressive Feedback** ✅ (Complete - merged to dev branch)
+- ✅ Claude Code-style conversational streaming UX implemented
+- ✅ Real-time tool call visibility with clean formatting  
+- ✅ Enterprise architecture with shared modules and tool registry
+- ✅ Production-ready streaming with SSE parsing and AbortController
+- ✅ Senior engineer architectural improvements applied
 
-### Week 3: UI Feature Development
-**Phase 3A: Calendar Assistant Interface**
-- 📋 CalendarWidget component showing listEvents() data
-- 📋 Visual calendar grid with events from Google Calendar
-- 📋 Quick action buttons (create meeting, block time)
-- 📋 Integration with chat for natural language calendar ops
+### Week 3: UI Feature Development 🔄 (Current Priority - dev branch)
+**Phase 3A: Calendar Assistant Interface** (Current Sprint)
+- 🔄 **PRIMARY**: CalendarWidget component replacing "Upcoming Events" section
+- 🔄 **UI Library Integration**: Research and implement calendar component library
+- 🔄 **Multiple Views**: Support week/month/day view modes with view switching
+- 🔄 **Read-Only Display**: Show Google Calendar events (agent handles modifications)
+- 🔄 **Real-Time Updates**: Polling system for calendar data synchronization
+- 🔄 **Click Interaction**: Expandable view for detailed event information
+- 📋 Integration with chat system for seamless user experience
 
 **Phase 3B: Inbox Concierge Interface**
 - 📋 EmailBuckets component showing classified emails
@@ -324,21 +339,24 @@ export async function listEvents(
 - **Enterprise Code Quality**: Zero TypeScript/ESLint violations, comprehensive error handling
 - **Real OAuth Integration**: Working Google Calendar and Gmail API with HTTP-only cookie auth
 
-### Current Challenge: Progressive Feedback UX
-**Issue**: Users see generic "Claude is thinking..." followed by tool-specific messages, resulting in redundant progress blocks.
+### ✅ Current Status: Production-Ready Foundation Complete
 
-**Current Behavior** (Suboptimal):
-```
-✅ Blocking time for you...     
-🔄 Claude is thinking...        <- Generic, not helpful
-```
+**Branch**: `dev` (ahead of main, contains all Phase 2C improvements)
+**Current Priority**: Phase 3A - Calendar Widget Implementation
 
-**Target Behavior** (Intelligent):
-```
-🔄 Analyzing your schedule for next week...
-✅ Created 5 workout blocks (7-9 AM Mon-Fri)
-🔄 Finding optimal meeting times...  
-✅ Scheduled meeting with Joe (Mon 1-2 PM)
+**Working Features**:
+- ✅ Claude Code-style conversational streaming UX
+- ✅ Real-time tool call visibility with clean formatting
+- ✅ Enterprise architecture with shared modules (agentConfig.ts, toolRegistry.ts)
+- ✅ Production-ready streaming with SSE parsing and AbortController
+- ✅ All 8 Google API tools working seamlessly
+
+**Architecture Pattern** (Critical for new developers):
+```typescript
+// Adding new tools: 3-step pattern
+// 1. Schema in src/lib/agentConfig.ts
+// 2. Implementation in src/lib/toolRegistry.ts  
+// 3. Automatic availability in both routes
 ```
 
 ## Phase 2C: Intelligent Progress Messaging
@@ -559,4 +577,173 @@ Complex Calendar Workflow:
 - **Testing**: Unit tests for all progress generation scenarios
 - **Documentation**: Comprehensive API docs for calendar widget integration
 
--- Claude | 2025-08-16 (Updated: Added Phase 2C intelligent progress messaging implementation plan)
+## Phase 3A: Calendar Widget Implementation Plan
+
+### Current Priority: Visual Calendar Interface
+
+**Branch**: `dev` (ahead of main, contains all Phase 2C improvements)
+**Target Location**: Replace "Upcoming Events" section in top-right sidebar
+**Approach**: Component library integration for production-ready calendar UI
+
+### Implementation Strategy
+
+#### **1. UI Component Library Research & Selection**
+
+**Evaluation Criteria:**
+- React compatibility and TypeScript support
+- Multiple view modes (week/month/day)
+- Event display and click handling
+- Customizable styling (matches current design)
+- Read-only mode support
+- Performance with large datasets
+
+**Candidate Libraries:**
+- `react-big-calendar` - Full-featured calendar with multiple views
+- `@schedule-x/calendar` - Modern, TypeScript-first calendar
+- `react-calendar` - Lightweight, customizable
+- `@natscale/react-calendar` - Simple, clean design
+
+#### **2. Calendar Data Integration**
+
+**Polling Architecture:**
+```typescript
+// src/hooks/useCalendarData.ts
+export function useCalendarData(refreshInterval = 30000) {
+  const [events, setEvents] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+  
+  // Poll calendar API every 30 seconds
+  useEffect(() => {
+    const interval = setInterval(fetchCalendarEvents, refreshInterval);
+    return () => clearInterval(interval);
+  }, [refreshInterval]);
+}
+```
+
+**Calendar API Endpoint:**
+```typescript
+// src/app/api/calendar/events/route.ts
+export async function GET() {
+  // Use existing listEvents tool function
+  // Return standardized event format for UI
+}
+```
+
+#### **3. Component Architecture**
+
+**CalendarWidget Structure:**
+```
+CalendarWidget.tsx
+├── CalendarHeader (view switcher, navigation)
+├── CalendarBody (chosen library component)
+├── EventModal (detailed view on click)
+└── LoadingState / ErrorState
+```
+
+**Integration Points:**
+- Replace current "Upcoming Events" placeholder
+- Maintain sidebar width and responsive behavior
+- Use existing Tailwind CSS design system
+- Handle authentication state (show login prompt if needed)
+
+#### **4. Event Display Standards**
+
+**Event Data Shape:**
+```typescript
+interface CalendarEvent {
+  id: string;
+  title: string;
+  start: Date;
+  end: Date;
+  description?: string;
+  location?: string;
+  attendees?: string[];
+  color?: string; // For visual categorization
+}
+```
+
+**View-Specific Behavior:**
+- **Week View**: Default, shows current week with hourly slots
+- **Month View**: Monthly overview with event indicators
+- **Day View**: Detailed single-day schedule
+
+#### **5. Real-Time Synchronization**
+
+**Update Triggers:**
+- Automatic polling every 30 seconds
+- Manual refresh after chat creates/modifies events
+- Browser focus/visibility change refresh
+- WebSocket updates (future enhancement)
+
+**Chat Integration:**
+```typescript
+// Update calendar when chat completes calendar operations
+const onChatCalendarOperation = () => {
+  triggerCalendarRefresh();
+};
+```
+
+### Development Tasks (Current Sprint)
+
+#### **Week 1: Foundation**
+1. **Library Evaluation & Selection**
+   - Install and test 2-3 candidate libraries
+   - Create proof-of-concept implementations
+   - Choose based on features and integration ease
+
+2. **Data Layer Setup**
+   - Create `useCalendarData` hook with polling
+   - Build `/api/calendar/events` endpoint
+   - Test with real Google Calendar data
+
+3. **Basic Component Structure**
+   - Replace "Upcoming Events" with CalendarWidget
+   - Implement view switcher (week/month/day)
+   - Handle loading and error states
+
+#### **Week 2: Polish & Integration**
+1. **Event Interaction**
+   - Click handling for event details
+   - Modal/expanded view implementation
+   - Responsive design for mobile
+
+2. **Chat Integration**
+   - Calendar refresh triggers from chat operations
+   - Visual feedback for calendar updates
+   - Error handling for auth failures
+
+3. **Performance Optimization**
+   - Efficient re-rendering patterns
+   - Data caching strategies
+   - Lazy loading for large datasets
+
+### Success Metrics
+
+**Functional Requirements:**
+- ✅ Shows real Google Calendar events
+- ✅ Supports week/month/day views
+- ✅ Updates within 30 seconds of changes
+- ✅ Click interaction for event details
+
+**User Experience:**
+- ✅ Matches existing design language
+- ✅ Responsive on mobile devices
+- ✅ Smooth transitions between views
+- ✅ Clear loading/error states
+
+**Technical Standards:**
+- ✅ Uses existing authentication system
+- ✅ TypeScript compliance and type safety
+- ✅ Leverages shared tool architecture
+- ✅ Performance optimized for real-time updates
+
+### Future Enhancements (Post-3A)
+- **Event Creation**: Click empty slots to create events via chat
+- **Drag & Drop**: Visual event modification (still agent-confirmed)
+- **Calendar Overlays**: Multiple calendar support
+- **Smart Scheduling**: AI-suggested time slots
+- **Conflict Detection**: Visual warnings for scheduling conflicts
+
+This calendar widget will provide immediate visual feedback for the conversational AI system, creating a seamless experience where users can see their schedule while having natural language conversations about calendar management.
+
+-- Claude | 2025-08-16 (Updated: Added Phase 3A Calendar Widget implementation plan - Current Priority)

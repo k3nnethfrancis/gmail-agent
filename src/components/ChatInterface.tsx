@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Send, Loader } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
+import { useCalendarRefresh } from '@/contexts/CalendarRefreshContext';
 
 interface Message {
   id: string;
@@ -28,6 +29,9 @@ export default function ChatInterface({ className = '' }: ChatInterfaceProps) {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  
+  // Get calendar refresh function
+  const { refreshCalendar } = useCalendarRefresh();
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -125,6 +129,21 @@ export default function ChatInterface({ className = '' }: ChatInterfaceProps) {
                     timestamp: new Date(),
                   };
                   setMessages(prev => [...prev, toolResultMessage]);
+                  
+                  // Check if this was a calendar operation that succeeded
+                  if (data.data.success && data.data.tool) {
+                    const calendarTools = [
+                      'create_event', 
+                      'update_event', 
+                      'delete_event', 
+                      'create_time_block'
+                    ];
+                    if (calendarTools.includes(data.data.tool)) {
+                      // Trigger immediate calendar refresh
+                      console.warn(`🔄 Calendar operation ${data.data.tool} completed, refreshing calendar...`);
+                      setTimeout(() => refreshCalendar(), 500); // Small delay to ensure operation completed
+                    }
+                  }
                   break;
                 }
                 case 'error': {

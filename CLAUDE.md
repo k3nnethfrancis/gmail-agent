@@ -272,3 +272,177 @@ This application demonstrates enterprise-level AI integration with real-world AP
 - Comprehensive documentation for future development
 
 The foundation is solid and ready for advanced features like visual calendar widgets, intelligent email classification, and streaming responses.
+
+## Senior Engineer Architecture Guidance
+
+### Production-Ready Architecture Patterns
+
+After implementing the Claude Code-style conversational UX, the senior engineer provided critical architectural improvements that transformed the codebase into an enterprise-ready, maintainable system.
+
+#### **Centralized Configuration Pattern**
+```typescript
+// src/lib/agentConfig.ts - Single source of truth
+export function createSystemPrompt() { /* Dynamic prompt generation */ }
+export const tools = [ /* Tool schema definitions */ ];
+```
+
+**Benefits:**
+- Single source of truth for tools
+- Routes stay thin and consistent  
+- Easy to modify tool schemas globally
+
+#### **Tool Registry Pattern**
+```typescript
+// src/lib/toolRegistry.ts - Execution registry
+export const toolRegistry: Record<string, ToolFunction> = {
+  list_events: async (input, context) => { /* implementation */ },
+  create_event: async (input, context) => { /* implementation */ },
+};
+
+export async function executeTool(name: string, input: unknown, context: ToolContext) {
+  const toolFunction = toolRegistry[name];
+  return await toolFunction(input, context);
+}
+```
+
+**Benefits:**
+- Eliminates large switch statements
+- Easier to add new tools
+- Fewer type holes and duplication
+- Consistent error handling patterns
+
+#### **Route Orchestration Pattern**
+
+**Streaming Route** (`/api/chat-stream`): UX-first orchestrator
+- Real-time SSE updates per tool execution
+- Claude Code-style conversational flow
+- Transparent tool execution visibility
+
+**Non-Streaming Route** (`/api/chat`): Deterministic responses  
+- Single final answer with progress summary
+- Same shared config/registry
+- Consistent behavior for non-streaming clients
+
+#### **Client Hardening Patterns**
+
+**Buffered SSE Parsing:**
+```typescript
+// Proper event boundary handling
+let buffer = '';
+buffer += decoder.decode(value, { stream: true });
+while ((idx = buffer.indexOf('\n\n')) !== -1) {
+  const raw = buffer.slice(0, idx).trim();
+  buffer = buffer.slice(idx + 2);
+  // Process complete event
+}
+```
+
+**Stream Management:**
+```typescript
+// Prevent overlapping streams and memory leaks
+const abortRef = useRef<AbortController | null>(null);
+abortRef.current?.abort(); // Cancel previous
+const ac = new AbortController();
+abortRef.current = ac;
+```
+
+### Tool Development Workflow
+
+#### **Adding a New Tool (3-Step Pattern):**
+
+1. **Schema Definition** (`agentConfig.ts`):
+```typescript
+{
+  name: 'new_tool',
+  description: 'Tool description',
+  input_schema: { /* JSON schema */ }
+}
+```
+
+2. **Execution Implementation** (`toolRegistry.ts`):
+```typescript
+new_tool: async (input: unknown, context: ToolContext) => {
+  const i = input as { /* expected shape */ };
+  return await actualToolFunction(context.accessToken, i.param);
+}
+```
+
+3. **Automatic Availability**: Both routes pick up the new tool automatically
+
+#### **Result Envelope Standards**
+```typescript
+type ToolResult = {
+  success?: boolean;
+  events?: unknown[];      // For calendar operations
+  threads?: unknown[];     // For email operations  
+  event?: unknown;         // For single event creation
+  error?: string;          // For error cases
+}
+```
+
+**Key Principles:**
+- Keep payloads small and typed
+- Summarize for LLM and UI consumption
+- Avoid sending massive data structures
+
+### Architecture Decision Records
+
+#### **Context Management**
+- **Decision**: Keep full conversation context (no truncation)
+- **Rationale**: Maintain conversation coherence
+- **Future**: Implement adaptive truncation only when approaching token limits
+
+#### **Runtime Choice**
+- **Decision**: Use Node runtime (not Edge) for streaming route
+- **Rationale**: `googleapis` requires Node APIs
+- **Impact**: Optimal for Google API integration
+
+#### **Cookie Handling**
+- **Decision**: Keep `getTokensFromCookies()` async
+- **Rationale**: Match Next.js typings and avoid lint noise
+- **Implementation**: Consistent across both routes
+
+### Code Quality Standards
+
+#### **Route Responsibilities**
+Routes should remain thin orchestration layers:
+1. Validate input
+2. Call LLM with system + tools  
+3. Loop on tool calls
+4. Return shaped results
+
+#### **Type Safety Patterns**
+```typescript
+// Input narrowing per tool
+const i = input as { expectedShape: string };
+
+// Result envelope typing
+const result: ToolResult = await executeTool(name, input, context);
+
+// Error handling with unknown type
+} catch (error: unknown) {
+  const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+}
+```
+
+#### **Performance Optimizations**
+- Small iteration delays to reduce CPU spikes
+- Buffered SSE parsing to prevent JSON split issues
+- AbortController for memory leak prevention
+- Stable React keys for efficient rendering
+
+### Future Development Guidelines
+
+#### **Extending the System**
+1. **Tool Addition**: Follow 3-step pattern (schema → registry → automatic)
+2. **Route Changes**: Keep orchestration logic thin
+3. **Client Updates**: Maintain SSE buffering and abort patterns
+4. **Type Safety**: Use `unknown` + narrowing, avoid `any`
+
+#### **Testing Strategy**
+- Test tool functions in isolation
+- Test registry execution patterns
+- Test SSE parsing with chunk boundaries
+- Test abort controller cleanup
+
+This architecture provides a scalable foundation for enterprise-level AI tool integration with proper separation of concerns, type safety, and maintainability.
