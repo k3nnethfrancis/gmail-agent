@@ -30,6 +30,10 @@ export default function ChatInterface({ className = '' }: ChatInterfaceProps) {
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
+  // Message consolidation state
+  const consolidationTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const pendingConsolidationRef = useRef<Map<string, {count: number, firstMessage: Message}>>(new Map());
+  
   // Get calendar refresh function
   const { refreshCalendar } = useCalendarRefresh();
 
@@ -37,6 +41,15 @@ export default function ChatInterface({ className = '' }: ChatInterfaceProps) {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+  
+  // Cleanup consolidation timer on unmount
+  useEffect(() => {
+    return () => {
+      if (consolidationTimerRef.current) {
+        clearTimeout(consolidationTimerRef.current);
+      }
+    };
+  }, []);
 
   const sendMessage = async () => {
     if (!input.trim() || isLoading) return;
@@ -121,14 +134,60 @@ export default function ChatInterface({ className = '' }: ChatInterfaceProps) {
                   break;
                 }
                 case 'tool_result': {
-                  const resultIcon = data.data.success ? '⎿' : '❌';
-                  const toolResultMessage: Message = {
-                    id: crypto.randomUUID?.() ?? String(Date.now()),
-                    role: 'assistant',
-                    content: `  ${resultIcon} ${data.data.summary}`,
-                    timestamp: new Date(),
-                  };
-                  setMessages(prev => [...prev, toolResultMessage]);
+                  // Special handling for deletion safety guidance - consolidate multiple instances
+                  const isGuidance = data.data.summary?.includes('📋 Need to check calendar first');
+                  
+                  if (isGuidance) {
+                    // Consolidate guidance messages
+                    const guidanceKey = 'calendar_guidance';
+                    const pending = pendingConsolidationRef.current;
+                    
+                    if (pending.has(guidanceKey)) {
+                      // Increment count for existing guidance
+                      const existing = pending.get(guidanceKey)!;
+                      existing.count++;
+                    } else {
+                      // First guidance message
+                      const guidanceMessage: Message = {
+                        id: crypto.randomUUID?.() ?? String(Date.now()),
+                        role: 'assistant',
+                        content: `  📋 Need to check calendar first...`,
+                        timestamp: new Date(),
+                      };
+                      
+                      pending.set(guidanceKey, {count: 1, firstMessage: guidanceMessage});
+                      setMessages(prev => [...prev, guidanceMessage]);
+                      
+                      // Set timer to finalize consolidation
+                      if (consolidationTimerRef.current) {
+                        clearTimeout(consolidationTimerRef.current);
+                      }
+                      
+                      consolidationTimerRef.current = setTimeout(() => {
+                        const final = pending.get(guidanceKey);
+                        if (final && final.count > 1) {
+                          // Update the message to show count
+                          setMessages(prev => prev.map(msg => 
+                            msg.id === final.firstMessage.id 
+                              ? {...msg, content: `  📋 Need to check calendar first (${final.count} attempts)`}
+                              : msg
+                          ));
+                        }
+                        pending.clear();
+                        consolidationTimerRef.current = null;
+                      }, 1000); // 1 second consolidation window
+                    }
+                  } else {
+                    // Regular tool result handling
+                    const resultIcon = data.data.success ? '⎿' : '❌';
+                    const toolResultMessage: Message = {
+                      id: crypto.randomUUID?.() ?? String(Date.now()),
+                      role: 'assistant',
+                      content: `  ${resultIcon} ${data.data.summary}`,
+                      timestamp: new Date(),
+                    };
+                    setMessages(prev => [...prev, toolResultMessage]);
+                  }
                   
                   // Check if this was a calendar operation that succeeded
                   if (data.data.success && data.data.tool) {

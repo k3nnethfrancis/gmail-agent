@@ -128,9 +128,15 @@ export async function POST(request: NextRequest) {
           let totalToolCalls = 0;
           const maxToolCalls = 50;
           
+          // Generate session ID from access token hash for session-based tool history tracking
+          const sessionId = tokens.accessToken ? 
+            `session_${tokens.accessToken.substring(0, 8)}_${Date.now()}` : 
+            'default';
+          
           const toolContext: ToolContext = {
             accessToken: tokens.accessToken,
             refreshToken: tokens.refreshToken,
+            sessionId,
           };
 
           while (iterationCount < maxIterations && totalToolCalls < maxToolCalls) {
@@ -184,17 +190,26 @@ export async function POST(request: NextRequest) {
                   content: JSON.stringify(result),
                 });
 
-                // CLAUDE CODE STYLE: Show tool result summary
-                const resultSummary = result.success 
-                  ? (result.events?.length ? `Found ${result.events.length} events` :
-                     result.threads?.length ? `Found ${result.threads.length} threads` :
-                     result.event ? 'Event created successfully' :
-                     'Completed successfully')
-                  : 'Failed';
+                // CLAUDE CODE STYLE: Show tool result summary with special handling
+                let resultSummary: string;
+                let displaySuccess = result.success;
+                
+                if (result.success) {
+                  resultSummary = result.events?.length ? `Found ${result.events.length} events` :
+                                 result.threads?.length ? `Found ${result.threads.length} threads` :
+                                 result.event ? 'Event created successfully' :
+                                 'Completed successfully';
+                } else if ((result as any).requiresListEvents) {
+                  // Special case: deletion safety - show as guidance, not failure
+                  resultSummary = `📋 Need to check calendar first`;
+                  displaySuccess = true; // Don't show as error in UI
+                } else {
+                  resultSummary = 'Failed';
+                }
                 
                 sendSSEMessage(controller, 'tool_result', { 
                   tool: name, 
-                  success: result.success,
+                  success: displaySuccess,
                   summary: resultSummary,
                   id
                 });

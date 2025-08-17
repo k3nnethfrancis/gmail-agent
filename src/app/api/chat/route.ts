@@ -160,7 +160,16 @@ export async function POST(request: NextRequest) {
         addProgressUpdate(progressMessage);
 
         try {
-          const toolContext: ToolContext = { accessToken: tokens.accessToken!, refreshToken: tokens.refreshToken };
+          // Generate session ID for tool history tracking
+          const sessionId = tokens.accessToken ? 
+            `session_${tokens.accessToken.substring(0, 8)}_${timestamp}` : 
+            'default';
+            
+          const toolContext: ToolContext = { 
+            accessToken: tokens.accessToken!, 
+            refreshToken: tokens.refreshToken,
+            sessionId,
+          };
           const result = await executeTool(name, input, toolContext);
 
           const success = (result as { success?: boolean }).success;
