@@ -192,9 +192,9 @@ export default function ChatInterface({ className = '' }: ChatInterfaceProps) {
   };
 
   return (
-    <div className={`flex flex-col h-full max-h-full bg-white rounded-lg shadow overflow-hidden ${className}`}>
+    <div className={`bg-white rounded-lg shadow overflow-hidden ${className}`} style={{ height: 'calc(100vh - 8rem)', display: 'flex', flexDirection: 'column' }}>
       {/* Header */}
-      <div className="p-4 border-b border-gray-200">
+      <div className="p-4 border-b border-gray-200" style={{ flexShrink: 0 }}>
         <h2 className="text-lg font-semibold text-gray-900">
           Calendar & Email Assistant
         </h2>
@@ -203,8 +203,8 @@ export default function ChatInterface({ className = '' }: ChatInterfaceProps) {
         </p>
       </div>
 
-      {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4 min-h-0 max-h-full">
+      {/* Messages - Fixed height with internal scrolling */}
+      <div className="p-4 space-y-4" style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
         {messages.map((message, index) => (
           <div
             key={index}
@@ -279,7 +279,7 @@ export default function ChatInterface({ className = '' }: ChatInterfaceProps) {
       </div>
 
       {/* Input */}
-      <div className="p-4 border-t border-gray-200">
+      <div className="p-4 border-t border-gray-200" style={{ flexShrink: 0 }}>
         <div className="flex space-x-2">
           <textarea
             value={input}

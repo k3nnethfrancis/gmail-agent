@@ -7,16 +7,18 @@ export default function Home() {
   return (
     <AuthGuard>
       <CalendarRefreshProvider>
-        <div className="min-h-screen bg-gray-50">
-          <div className="max-w-7xl mx-auto p-6">
+        <div className="h-screen bg-gray-50 flex flex-col">
+          <div className="max-w-7xl mx-auto p-6 flex-shrink-0">
             <h1 className="text-3xl font-bold text-gray-900 mb-8">
               Calendar Assistant + Inbox Concierge
             </h1>
-            
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh-12rem)]">
+          </div>
+          
+          <div className="flex-1 max-w-7xl mx-auto px-6 pb-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-full">
               {/* Chat Interface - Takes up 2/3 on large screens */}
               <div className="lg:col-span-2">
-                <ChatInterface className="h-full" />
+                <ChatInterface />
               </div>
               
               {/* Side Panel for Calendar/Email widgets */}
