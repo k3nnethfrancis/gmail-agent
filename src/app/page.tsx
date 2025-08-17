@@ -1,6 +1,7 @@
 import AuthGuard from '@/components/AuthGuard';
 import ChatInterface from '@/components/ChatInterface';
 import CalendarWidget from '@/components/CalendarWidget';
+import EmailBuckets from '@/components/EmailBuckets';
 import { CalendarRefreshProvider } from '@/contexts/CalendarRefreshContext';
 
 export default function Home() {
@@ -26,15 +27,8 @@ export default function Home() {
                 {/* Calendar Widget */}
                 <CalendarWidget />
                 
-                {/* Email Buckets Placeholder */}
-                <div className="bg-white p-6 rounded-lg shadow">
-                  <h2 className="text-lg font-semibold text-gray-900 mb-4">
-                    Email Categories
-                  </h2>
-                  <p className="text-gray-600 text-sm">
-                    Ask me "Classify my recent emails" to organize your inbox.
-                  </p>
-                </div>
+                {/* Email Buckets */}
+                <EmailBuckets />
               </div>
             </div>
           </div>

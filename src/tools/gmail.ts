@@ -1,5 +1,6 @@
 import { google } from 'googleapis';
 import { createAuthenticatedClient } from '@/lib/auth';
+import Anthropic from '@anthropic-ai/sdk';
 
 export interface EmailThread {
   id: string;
@@ -276,56 +277,134 @@ export async function archiveThread(
 }
 
 /**
- * Classify emails into categories (this would use AI in a real implementation)
- * For now, returns a simple categorization based on keywords
+ * Classify emails into categories using Claude AI for intelligent categorization
  */
 export async function classifyEmails(
   accessToken: string,
   threadIds: string[],
   categories?: string[],
   refreshToken?: string
-): Promise<{ success: boolean; classifications?: Array<{ threadId: string; category: string; confidence: number }>; error?: string }> {
+): Promise<{ success: boolean; classifications?: Array<{ threadId: string; category: string; confidence: number; reasoning?: string }>; error?: string }> {
   const cats = categories ?? ['Important', 'Can wait', 'Auto-archive', 'Newsletter'];
+  
   try {
     const gmail = getGmailClient(accessToken, refreshToken);
+    const anthropic = new Anthropic({
+      apiKey: process.env.ANTHROPIC_API_KEY!,
+    });
+    
     const classifications = [];
 
-    for (const threadId of threadIds) {
-      // Get thread details for classification
-      const threadResponse = await gmail.users.threads.get({
-        userId: 'me',
-        id: threadId,
-      });
-
-      const thread = threadResponse.data;
-      const firstMessage = thread.messages?.[0];
+    // Process emails in batches for efficiency
+    const batchSize = 5;
+    for (let i = 0; i < threadIds.length; i += batchSize) {
+      const batch = threadIds.slice(i, i + batchSize);
+      const emailContexts = [];
       
-      if (!firstMessage) continue;
+      // Gather email data for this batch
+      for (const threadId of batch) {
+        try {
+          const threadResponse = await gmail.users.threads.get({
+            userId: 'me',
+            id: threadId,
+          });
 
-      // Simple keyword-based classification (would be replaced with AI)
-      const subject = firstMessage.payload.headers?.find(h => h.name === 'Subject')?.value || '';
-      const snippet = thread.snippet || '';
-      const text = (subject + ' ' + snippet).toLowerCase();
+          const thread = threadResponse.data;
+          const firstMessage = thread.messages?.[0];
+          
+          if (!firstMessage) continue;
 
-      let category = 'Can wait'; // default
-      let confidence = 0.5;
-
-      if (text.includes('urgent') || text.includes('important') || text.includes('asap')) {
-        category = 'Important';
-        confidence = 0.9;
-      } else if (text.includes('newsletter') || text.includes('unsubscribe') || text.includes('marketing')) {
-        category = 'Newsletter';
-        confidence = 0.8;
-      } else if (text.includes('automated') || text.includes('no-reply') || text.includes('notification')) {
-        category = 'Auto-archive';
-        confidence = 0.7;
+          // Extract key email information
+          const subject = firstMessage.payload.headers?.find(h => h.name === 'Subject')?.value || '';
+          const from = firstMessage.payload.headers?.find(h => h.name === 'From')?.value || '';
+          const snippet = thread.snippet || '';
+          
+          emailContexts.push({
+            threadId,
+            subject,
+            from,
+            snippet,
+          });
+        } catch (threadError) {
+          console.warn(`Failed to fetch thread ${threadId}:`, threadError);
+          continue;
+        }
       }
+      
+      if (emailContexts.length === 0) continue;
+      
+      // Create classification prompt for this batch
+      const classificationPrompt = `Classify these emails into the following categories: ${cats.join(', ')}
 
-      classifications.push({
-        threadId,
-        category,
-        confidence,
-      });
+For each email, analyze the subject, sender, and content snippet to determine:
+1. Which category best fits
+2. Confidence level (0.0 to 1.0)
+3. Brief reasoning
+
+Categories explained:
+- Important: Requires immediate attention, action items, urgent matters
+- Can wait: Non-urgent but relevant emails that can be handled later
+- Auto-archive: Automated notifications, receipts, confirmations that don't need attention
+- Newsletter: Marketing emails, newsletters, promotional content
+
+Emails to classify:
+${emailContexts.map((email, idx) => `
+${idx + 1}. Thread ID: ${email.threadId}
+   Subject: ${email.subject}
+   From: ${email.from}
+   Snippet: ${email.snippet}
+`).join('')}
+
+Respond with ONLY a JSON array containing objects with threadId, category, confidence, and reasoning fields. No other text.`;
+
+      try {
+        const response = await anthropic.messages.create({
+          model: 'claude-3-5-sonnet-20241022',
+          max_tokens: 2000,
+          system: 'You are an expert email classifier. Respond only with valid JSON as requested.',
+          messages: [
+            {
+              role: 'user',
+              content: classificationPrompt,
+            },
+          ],
+        });
+
+        const content = response.content[0];
+        if (content.type === 'text') {
+          try {
+            const batchClassifications = JSON.parse(content.text);
+            if (Array.isArray(batchClassifications)) {
+              classifications.push(...batchClassifications);
+            }
+          } catch (parseError) {
+            console.warn('Failed to parse Claude classification response:', parseError);
+            // Fallback to default classification for this batch
+            for (const email of emailContexts) {
+              classifications.push({
+                threadId: email.threadId,
+                category: 'Can wait',
+                confidence: 0.5,
+                reasoning: 'AI classification failed, using default',
+              });
+            }
+          }
+        }
+      } catch (claudeError) {
+        console.warn('Claude classification failed for batch:', claudeError);
+        // Fallback to default classification for this batch
+        for (const email of emailContexts) {
+          classifications.push({
+            threadId: email.threadId,
+            category: 'Can wait',
+            confidence: 0.5,
+            reasoning: 'AI service unavailable, using default',
+          });
+        }
+      }
+      
+      // Small delay between batches to respect rate limits
+      await new Promise(resolve => setTimeout(resolve, 100));
     }
 
     return {
