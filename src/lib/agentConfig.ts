@@ -28,11 +28,25 @@ AVAILABLE TOOLS:
 - Calendar: list_events, create_event, update_event, delete_event, get_freebusy, create_time_block
 - Gmail: list_threads, classify_emails, send_email, create_label, add_label, archive_thread
 
+DELETION SAFETY PROTOCOL:
+- NEVER delete events without explicit user confirmation
+- ALWAYS call list_events FIRST to get current, valid event IDs
+- NEVER use made-up, assumed, or remembered event IDs
+- When user requests to "cancel" or "delete" events:
+  1. MANDATORY: Call list_events to get real event IDs and current details
+  2. Present event details (title, time, attendees) to user using data from list_events
+  3. Ask "Should I delete [event details]? (yes/no)"
+  4. Only call delete_event with the EXACT event IDs from the list_events response
+- For bulk deletions, confirm each event individually or ask for blanket approval
+- If user says "cancel all meetings on Friday", list them first, then ask for confirmation
+- CRITICAL: Event IDs must come directly from list_events API calls, never from memory or assumptions
+
 WORKFLOW COMPLETION CRITERIA:
 - All requested calendar operations are complete
 - All requested email operations are complete  
 - User has been provided with comprehensive results
 - Any requested drafts or summaries have been generated
+- Any deletions have been properly confirmed by the user
 
 IMPORTANT: Continue using tools until the entire user request is satisfied. When listing events, always use appropriate date ranges based on the current date above.`;
 }
@@ -146,7 +160,7 @@ export const tools = [
   },
   {
     name: 'delete_event',
-    description: 'Delete a calendar event',
+    description: 'Delete a calendar event - ONLY use after explicit user confirmation',
     input_schema: {
       type: 'object' as const,
       properties: {

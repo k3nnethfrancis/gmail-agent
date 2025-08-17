@@ -88,6 +88,11 @@ export async function POST(request: NextRequest) {
     const message = body.message;
     const conversation = validateConversation(body.conversation);
     
+    // Enhanced request logging
+    console.warn(`🚀 Chat Stream API: New message received`);
+    console.warn(`💬 User Message: "${message}"`);
+    console.warn(`📜 Conversation History: ${conversation.length} messages`);
+    
     // Get authentication tokens
     const tokens = await getTokensFromCookies();
     if (!tokens.accessToken) {
@@ -151,6 +156,11 @@ export async function POST(request: NextRequest) {
             for (const block of toolCalls) {
               const { name, input, id } = block as { type: 'tool_use'; name: string; input: unknown; id: string };
               
+              // Enhanced logging for debugging
+              console.warn(`🔧 Tool Call: ${name}`);
+              console.warn(`📋 Input:`, JSON.stringify(input, null, 2));
+              console.warn(`🆔 Tool ID: ${id}`);
+
               // CLAUDE CODE STYLE: Show the tool call with clean display
               sendSSEMessage(controller, 'tool_call', { 
                 name, 
@@ -164,6 +174,9 @@ export async function POST(request: NextRequest) {
               
               try {
                 const result = await executeTool(name, input, toolContext);
+                
+                // Enhanced result logging
+                console.warn(`✅ Tool Result for ${name}:`, JSON.stringify(result, null, 2));
                 
                 toolResults.push({
                   tool_use_id: id,
@@ -188,6 +201,11 @@ export async function POST(request: NextRequest) {
                 
               } catch (error: unknown) {
                 const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+                
+                // Enhanced error logging
+                console.error(`❌ Tool Error for ${name}:`, error);
+                console.error(`📋 Failed Input:`, JSON.stringify(input, null, 2));
+                
                 toolResults.push({
                   tool_use_id: id,
                   type: 'tool_result',
