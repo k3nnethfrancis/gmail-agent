@@ -1,5 +1,6 @@
 import { google } from 'googleapis';
 import { OAuth2Client } from 'google-auth-library';
+import { cookies } from 'next/headers';
 
 // OAuth2 client configuration
 export function createOAuth2Client() {
@@ -49,4 +50,13 @@ export function createAuthenticatedClient(tokens: { access_token?: string; refre
   const oauth2Client = createOAuth2Client();
   oauth2Client.setCredentials(tokens);
   return oauth2Client;
+}
+
+// Helper to get tokens from cookies (async to satisfy current Next types)
+export async function getTokensFromCookies() {
+  const cookieStore = await cookies();
+  return {
+    accessToken: cookieStore.get('google_access_token')?.value,
+    refreshToken: cookieStore.get('google_refresh_token')?.value,
+  };
 }

@@ -8,7 +8,6 @@ import {
   RefreshCw,
   AlertCircle,
   X,
-  Edit3,
   Star,
   Archive
 } from 'lucide-react';
@@ -275,16 +274,30 @@ export default function InboxView() {
     }
   };
 
-  // Handle marking email as training example
+  // Handle toggling training example status
   const handleMarkAsExample = async (emailId: string) => {
     console.warn(`🌟 Star button clicked for email: ${emailId}`);
     try {
       const email = emails.find(e => e.id === emailId);
       console.warn(`📧 Email found: ${email?.subject}, Tags: ${email?.tags?.map(t => `${t.name}(${t.assignedBy})`).join(', ')}`);
       
-      // Mark this email-tag combination as a training example
+      // Check if email has tags (requirement for training examples)
+      if (!email?.tags || email.tags.length === 0) {
+        const message = 'Email must be tagged before it can be marked as a training example';
+        console.warn(`❌ Validation failed: ${message}`);
+        setError(message);
+        return;
+      }
+
+      // Check if email is already a training example
+      const isTrainingExample = email.tags.some(tag => tag.assignedBy === 'user');
+      const method = isTrainingExample ? 'DELETE' : 'POST';
+      const action = isTrainingExample ? 'remove from' : 'mark as';
+      
+      console.warn(`🚀 Making ${method} request to /api/training-examples to ${action} training example`);
+      
       const response = await fetch('/api/training-examples', {
-        method: 'POST',
+        method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ emailId }),
         credentials: 'include'
@@ -295,18 +308,22 @@ export default function InboxView() {
       console.warn(`📊 API response:`, responseData);
 
       if (response.ok) {
-        // Show visual feedback
         const tagNames = email?.tags?.map(t => t.name).join(', ') || 'untagged';
-        console.warn(`✅ Email marked as training example: "${email?.subject}" → [${tagNames}]`);
+        const successMessage = isTrainingExample 
+          ? `🗑️ Email "${email.subject}" removed from training examples`
+          : `✅ Email "${email.subject}" marked as training example for categories: ${tagNames}`;
+        
+        console.warn(successMessage);
+        alert(successMessage);
         
         // Refresh to show updated state
         await fetchData();
       } else {
-        throw new Error(responseData.error || 'Failed to mark as training example');
+        throw new Error(responseData.error || `Failed to ${action} training example`);
       }
     } catch (error) {
-      console.error('Error marking as example:', error);
-      setError(error instanceof Error ? error.message : 'Failed to mark as training example');
+      console.error('Error toggling training example:', error);
+      setError(error instanceof Error ? error.message : 'Failed to toggle training example');
     }
   };
 
@@ -669,6 +686,87 @@ export default function InboxView() {
                         />
                       </div>
 
+                      {/* Action Buttons - positioned early in flex layout */}
+                      <div className="flex items-center space-x-1 flex-shrink-0">
+                        {editingEmailCategory === email.id ? (
+                          <div className="bg-white border border-gray-300 rounded-lg shadow-lg p-2">
+                            <div className="flex items-center space-x-2">
+                              <input
+                                type="text"
+                                value={newCategoryInput}
+                                onChange={(e) => setNewCategoryInput(e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') {
+                                    handleCreateAndAssignCategory(email.id, newCategoryInput, true);
+                                  } else if (e.key === 'Escape') {
+                                    setEditingEmailCategory(null);
+                                    setNewCategoryInput('');
+                                  }
+                                }}
+                                placeholder="Type category name..."
+                                className="text-xs px-2 py-1 border border-gray-300 rounded w-32"
+                                autoFocus
+                              />
+                              <button
+                                onClick={() => handleCreateAndAssignCategory(email.id, newCategoryInput, true)}
+                                className="text-green-600 hover:text-green-700 p-1 rounded"
+                                title="Save"
+                              >
+                                <Plus className="w-3 h-3" />
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setEditingEmailCategory(null);
+                                  setNewCategoryInput('');
+                                }}
+                                className="text-gray-500 hover:text-gray-700 p-1 rounded"
+                                title="Cancel"
+                              >
+                                <X className="w-3 h-3" />
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setEditingEmailCategory(email.id);
+                                setNewCategoryInput('');
+                              }}
+                              className="p-1 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                              title="Change category"
+                            >
+                              <Tag className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleMarkAsExample(email.id);
+                              }}
+                              className={`p-1 rounded transition-colors ${
+                                email.tags?.some(tag => tag.assignedBy === 'user')
+                                  ? 'text-yellow-600 bg-yellow-100 hover:bg-yellow-200'
+                                  : 'text-gray-500 hover:text-yellow-600 hover:bg-yellow-50'
+                              }`}
+                              title={
+                                email.tags?.some(tag => tag.assignedBy === 'user')
+                                  ? 'Remove from training examples'
+                                  : 'Mark as training example'
+                              }
+                            >
+                              <Star 
+                                className={`w-4 h-4 ${
+                                  email.tags?.some(tag => tag.assignedBy === 'user')
+                                    ? 'fill-yellow-400'
+                                    : ''
+                                }`} 
+                              />
+                            </button>
+                          </>
+                        )}
+                      </div>
+
                       {/* Email Content */}
                       <div 
                         className="flex-1 min-w-0 cursor-pointer"
@@ -707,105 +805,21 @@ export default function InboxView() {
                         {email.tags && email.tags.length > 0 && (
                           <div className="flex flex-wrap gap-1 mt-2">
                             {email.tags.map(tag => (
-                              <button
+                              <span
                                 key={tag.id}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setEditingEmailCategory(email.id);
-                                  setNewCategoryInput(tag.name);
-                                }}
-                                className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium hover:opacity-80 transition-opacity"
+                                className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium"
                                 style={{ 
                                   backgroundColor: `${tag.color}20`,
                                   color: tag.color
                                 }}
-                                title="Click to edit category"
                               >
                                 {tag.name}
-                              </button>
+                              </span>
                             ))}
                           </div>
                         )}
                       </div>
 
-                      {/* Hover Actions */}
-                      <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center space-x-2 ml-4 flex-shrink-0">
-                        {/* Change Category */}
-                        {editingEmailCategory === email.id ? (
-                          <div className="absolute right-4 top-4 bg-white border border-gray-300 rounded-lg shadow-lg p-2 z-10">
-                            <div className="flex items-center space-x-2">
-                              <input
-                                type="text"
-                                value={newCategoryInput}
-                                onChange={(e) => setNewCategoryInput(e.target.value)}
-                                onKeyDown={(e) => {
-                                  if (e.key === 'Enter') {
-                                    handleCreateAndAssignCategory(email.id, newCategoryInput, true);
-                                  } else if (e.key === 'Escape') {
-                                    setEditingEmailCategory(null);
-                                    setNewCategoryInput('');
-                                  }
-                                }}
-                                placeholder="Type category name..."
-                                className="text-xs px-3 py-1 border border-gray-300 rounded w-32"
-                                autoFocus
-                              />
-                              <button
-                                onClick={() => handleCreateAndAssignCategory(email.id, newCategoryInput, true)}
-                                className="text-green-600 hover:text-green-700 p-1"
-                                title="Save"
-                              >
-                                <Plus className="w-3 h-3" />
-                              </button>
-                              <button
-                                onClick={() => {
-                                  setEditingEmailCategory(null);
-                                  setNewCategoryInput('');
-                                }}
-                                className="text-gray-500 hover:text-gray-700 p-1"
-                                title="Cancel"
-                              >
-                                <X className="w-3 h-3" />
-                              </button>
-                            </div>
-                          </div>
-                        ) : (
-                          <>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setEditingEmailCategory(email.id);
-                                setNewCategoryInput('');
-                              }}
-                              className="p-1 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded"
-                              title="Change category"
-                            >
-                              <Tag className="w-4 h-4" />
-                            </button>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleMarkAsExample(email.id);
-                              }}
-                              className="p-1 text-gray-500 hover:text-yellow-600 hover:bg-yellow-50 rounded"
-                              title="Mark as training example"
-                            >
-                              <Star className="w-4 h-4" />
-                            </button>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                // Open email (this would navigate to email detail view)
-                                console.log('Opening email:', email.id);
-                              }}
-                              className="p-1 text-gray-500 hover:text-green-600 hover:bg-green-50 rounded"
-                              title="Open email"
-                            >
-                              <Edit3 className="w-4 h-4" />
-                            </button>
-                          </>
-                        )}
-                      </div>
                     </div>
                   </div>
                 ))}

@@ -1,33 +1,19 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { Send, Loader } from 'lucide-react';
+import { Send, Loader, RotateCcw } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { useCalendarRefresh } from '@/contexts/CalendarRefreshContext';
-
-interface Message {
-  id: string;
-  role: 'user' | 'assistant';
-  content: string;
-  timestamp: Date;
-}
+import { useChatStore, type Message } from '@/store/chatStore';
 
 interface ChatInterfaceProps {
   className?: string;
 }
 
 export default function ChatInterface({ className = '' }: ChatInterfaceProps) {
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: `${Date.now()}-welcome`,
-      role: 'assistant',
-      content: 'Hi! I can help you manage your calendar and emails. Try asking me "What meetings do I have today?" or "Classify my recent emails".',
-      timestamp: new Date(),
-    },
-  ]);
+  // Use Zustand store for persistent state
+  const { messages, input, isLoading, setMessages, addMessage, setInput, setIsLoading, clearChat } = useChatStore();
   const abortRef = useRef<AbortController | null>(null);
-  const [input, setInput] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
   // Message consolidation state
@@ -36,6 +22,15 @@ export default function ChatInterface({ className = '' }: ChatInterfaceProps) {
   
   // Get calendar refresh function
   const { refreshCalendar } = useCalendarRefresh();
+
+  const refreshChat = () => {
+    clearChat();
+    // Cancel any ongoing request
+    if (abortRef.current) {
+      abortRef.current.abort();
+      abortRef.current = null;
+    }
+  };
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -61,7 +56,7 @@ export default function ChatInterface({ className = '' }: ChatInterfaceProps) {
       timestamp: new Date(),
     };
 
-    setMessages(prev => [...prev, userMessage]);
+    addMessage(userMessage);
     setInput('');
     setIsLoading(true);
 
@@ -120,7 +115,7 @@ export default function ChatInterface({ className = '' }: ChatInterfaceProps) {
                     content: data.data,
                     timestamp: new Date(),
                   };
-                  setMessages(prev => [...prev, claudeMessage]);
+                  addMessage(claudeMessage);
                   break;
                 }
                 case 'tool_call': {
@@ -130,7 +125,7 @@ export default function ChatInterface({ className = '' }: ChatInterfaceProps) {
                     content: `⏺ ${data.data.display}`,
                     timestamp: new Date(),
                   };
-                  setMessages(prev => [...prev, toolCallMessage]);
+                  addMessage(toolCallMessage);
                   break;
                 }
                 case 'tool_result': {
@@ -156,7 +151,7 @@ export default function ChatInterface({ className = '' }: ChatInterfaceProps) {
                       };
                       
                       pending.set(guidanceKey, {count: 1, firstMessage: guidanceMessage});
-                      setMessages(prev => [...prev, guidanceMessage]);
+                      addMessage(guidanceMessage);
                       
                       // Set timer to finalize consolidation
                       if (consolidationTimerRef.current) {
@@ -167,11 +162,12 @@ export default function ChatInterface({ className = '' }: ChatInterfaceProps) {
                         const final = pending.get(guidanceKey);
                         if (final && final.count > 1) {
                           // Update the message to show count
-                          setMessages(prev => prev.map(msg => 
+                          const updatedMessages = messages.map(msg => 
                             msg.id === final.firstMessage.id 
                               ? {...msg, content: `  📋 Need to check calendar first (${final.count} attempts)`}
                               : msg
-                          ));
+                          );
+                          setMessages(updatedMessages);
                         }
                         pending.clear();
                         consolidationTimerRef.current = null;
@@ -186,7 +182,7 @@ export default function ChatInterface({ className = '' }: ChatInterfaceProps) {
                       content: `  ${resultIcon} ${data.data.summary}`,
                       timestamp: new Date(),
                     };
-                    setMessages(prev => [...prev, toolResultMessage]);
+                    addMessage(toolResultMessage);
                   }
                   
                   // Check if this was a calendar operation that succeeded
@@ -212,7 +208,7 @@ export default function ChatInterface({ className = '' }: ChatInterfaceProps) {
                     content: `❌ Error: ${data.data}`,
                     timestamp: new Date(),
                   };
-                  setMessages(prev => [...prev, errorMessage]);
+                  addMessage(errorMessage);
                   break;
                 }
                 case 'done':
@@ -237,7 +233,7 @@ export default function ChatInterface({ className = '' }: ChatInterfaceProps) {
         timestamp: new Date(),
       };
 
-      setMessages(prev => [...prev, errorMessage]);
+      addMessage(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -251,19 +247,19 @@ export default function ChatInterface({ className = '' }: ChatInterfaceProps) {
   };
 
   return (
-    <div className={`bg-white rounded-lg shadow overflow-hidden ${className}`} style={{ height: 'calc(100vh - 8rem)', display: 'flex', flexDirection: 'column' }}>
-      {/* Header */}
-      <div className="p-4 border-b border-gray-200" style={{ flexShrink: 0 }}>
-        <h2 className="text-lg font-semibold text-gray-900">
-          Calendar & Email Assistant
-        </h2>
-        <p className="text-sm text-gray-600">
-          Ask me about your calendar or emails
-        </p>
-      </div>
+    <div className={`relative bg-white overflow-hidden ${className}`} style={{ height: '100vh' }}>
+      {/* Floating Refresh Button */}
+      <button
+        onClick={refreshChat}
+        className="absolute top-4 left-4 z-10 bg-white border border-gray-300 p-2 rounded-lg shadow-sm hover:bg-gray-50 transition-colors"
+        title="Refresh Chat"
+      >
+        <RotateCcw className="w-4 h-4 text-gray-600" />
+      </button>
 
-      {/* Messages - Fixed height with internal scrolling */}
-      <div className="p-4 space-y-4" style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
+      {/* Messages Area - Fixed height with internal scrolling */}
+      <div className="flex flex-col" style={{ height: '100vh' }}>
+        <div className="flex-1 overflow-y-auto p-4 pb-32 pt-16 space-y-4" style={{ maxHeight: 'calc(100vh - 200px)' }}>
         {messages.map((message, index) => (
           <div
             key={index}
@@ -313,7 +309,7 @@ export default function ChatInterface({ className = '' }: ChatInterfaceProps) {
                     : 'text-gray-500'
                 }`}
               >
-                {message.timestamp.toLocaleTimeString([], {
+                {new Date(message.timestamp).toLocaleTimeString([], {
                   hour: '2-digit',
                   minute: '2-digit',
                 })}
@@ -335,31 +331,40 @@ export default function ChatInterface({ className = '' }: ChatInterfaceProps) {
         
         {/* Scroll anchor */}
         <div ref={messagesEndRef} />
-      </div>
-
-      {/* Input */}
-      <div className="p-4 border-t border-gray-200" style={{ flexShrink: 0 }}>
-        <div className="flex space-x-2">
-          <textarea
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Ask about your calendar or emails..."
-            className="flex-1 resize-none border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            rows={1}
-            disabled={isLoading}
-          />
-          <button
-            onClick={sendMessage}
-            disabled={!input.trim() || isLoading}
-            className="bg-blue-600 text-white p-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            <Send className="w-5 h-5" />
-          </button>
         </div>
-        
-        <div className="mt-2 text-xs text-gray-500">
-          <p>Try: "What meetings do I have today?" or "Classify my emails"</p>
+
+        {/* Floating Input Area */}
+        <div className="absolute bottom-4 left-4 right-4 bg-white border border-gray-300 rounded-xl shadow-lg p-4">
+          <div className="flex space-x-3">
+            <textarea
+              value={input}
+              onChange={(e) => {
+                setInput(e.target.value);
+                // Auto-resize textarea
+                e.target.style.height = 'auto';
+                e.target.style.height = Math.min(e.target.scrollHeight, 128) + 'px';
+              }}
+              onKeyDown={handleKeyDown}
+              placeholder="Ask about your calendar or emails..."
+              className="flex-1 resize-none border-0 bg-transparent text-sm text-gray-900 placeholder:text-gray-500 focus:outline-none min-h-[40px] max-h-32 py-2"
+              rows={1}
+              disabled={isLoading}
+              style={{ resize: 'none', overflow: 'hidden' }}
+            />
+            <button
+              onClick={sendMessage}
+              disabled={!input.trim() || isLoading}
+              className="bg-blue-600 text-white p-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex-shrink-0 self-end"
+            >
+              <Send className="w-5 h-5" />
+            </button>
+          </div>
+          
+          {messages.length === 0 && (
+            <div className="mt-2 text-xs text-gray-500">
+              <p>Try: "What meetings do I have today?" or "Classify my emails"</p>
+            </div>
+          )}
         </div>
       </div>
     </div>

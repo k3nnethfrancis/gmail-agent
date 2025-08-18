@@ -1,19 +1,27 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Mail, Inbox, Archive, Sparkles, RefreshCw, Loader, AlertCircle, Clock, CheckCircle2 } from 'lucide-react';
+import { Mail, Inbox, Archive, Sparkles, RefreshCw, Loader, AlertCircle, Clock, CheckCircle2, Database } from 'lucide-react';
 
 interface EmailThread {
   id: string;
+  threadId: string;
+  messageId: string;
+  subject: string;
+  fromAddress: string;
+  fromName?: string;
   snippet: string;
-  historyId: string;
-  subject?: string;
-  from?: string;
-  category?: string;
-  confidence?: number;
-  reasoning?: string;
-  unread?: boolean;
-  important?: boolean;
+  receivedAt: string;
+  isUnread: boolean;
+  isImportant: boolean;
+  tags?: Array<{
+    id: number;
+    name: string;
+    color: string;
+    assignedBy: string;
+    confidence?: number;
+    reasoning?: string;
+  }>;
 }
 
 interface EmailClassification {
@@ -24,11 +32,13 @@ interface EmailClassification {
 }
 
 interface EmailBucket {
+  id: number | string;
   name: string;
   icon: React.ReactNode;
   color: string;
   emails: EmailThread[];
   count: number;
+  unreadCount: number;
 }
 
 interface EmailBucketsProps {
@@ -48,19 +58,71 @@ export default function EmailBuckets({ className = '' }: EmailBucketsProps) {
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [isClassifying, setIsClassifying] = useState(false);
+  const [syncStatus, setSyncStatus] = useState<{
+    hasInitialSync: boolean;
+    totalEmails: number;
+    unreadEmails: number;
+  } | null>(null);
 
-  // Fetch recent email threads
-  const fetchEmailThreads = useCallback(async (): Promise<EmailThread[]> => {
+  // Check sync status and trigger initial sync if needed
+  const checkSyncStatus = useCallback(async () => {
     try {
-      const response = await fetch('/api/chat', {
+      const response = await fetch('/api/emails/sync', {
+        method: 'GET',
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to check sync status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      setSyncStatus(data.status);
+      
+      // If no initial sync, trigger one
+      if (!data.status.hasInitialSync) {
+        console.warn('📧 No initial sync found, triggering sync...');
+        await triggerSync();
+      }
+      
+      return data.status;
+    } catch (error) {
+      console.error('Failed to check sync status:', error);
+      throw error;
+    }
+  }, []);
+
+  // Trigger email sync
+  const triggerSync = useCallback(async (force = false) => {
+    try {
+      setIsLoading(true);
+      const response = await fetch('/api/emails/sync', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         credentials: 'include',
-        body: JSON.stringify({
-          message: 'Get my recent email threads for classification. Use list_threads with maxResults of 20.',
-        }),
+        body: JSON.stringify({ force, maxResults: 200 }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Sync failed: ${response.status}`);
+      }
+
+      const data = await response.json();
+      setSyncStatus(data.status);
+      return data;
+    } catch (error) {
+      console.error('Email sync failed:', error);
+      throw error;
+    }
+  }, []);
+
+  // Fetch emails from database
+  const fetchEmails = useCallback(async () => {
+    try {
+      const response = await fetch('/api/emails?limit=50', {
+        credentials: 'include',
       });
 
       if (!response.ok) {
@@ -68,50 +130,106 @@ export default function EmailBuckets({ className = '' }: EmailBucketsProps) {
       }
 
       const data = await response.json();
-      
-      // Extract threads from Claude's response
-      // This is a simplified extraction - in practice, we'd parse Claude's response
-      // For now, we'll make a direct API call to get threads
-      return [];
+      return data.emails || [];
     } catch (error) {
-      console.error('Failed to fetch email threads:', error);
+      console.error('Failed to fetch emails:', error);
       throw error;
     }
   }, []);
 
-  // Classify emails using our enhanced Claude-powered function
-  const classifyEmails = useCallback(async (threads: EmailThread[]): Promise<EmailClassification[]> => {
-    if (threads.length === 0) return [];
-    
+  // Fetch tags from database
+  const fetchTags = useCallback(async () => {
     try {
-      setIsClassifying(true);
-      const threadIds = threads.map(t => t.id);
-      
-      const response = await fetch('/api/chat', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+      const response = await fetch('/api/tags?includeStats=true', {
         credentials: 'include',
-        body: JSON.stringify({
-          message: `Classify these email thread IDs: ${threadIds.join(', ')}. Use the classify_emails tool.`,
-        }),
       });
 
       if (!response.ok) {
-        throw new Error(`Classification failed: ${response.status}`);
+        throw new Error(`Failed to fetch tags: ${response.status}`);
       }
 
       const data = await response.json();
-      // Parse Claude's response for classifications
-      // For now, return empty array - we'll integrate this properly
-      return [];
+      return data.tags || [];
     } catch (error) {
-      console.error('Email classification failed:', error);
+      console.error('Failed to fetch tags:', error);
       throw error;
-    } finally {
-      setIsClassifying(false);
     }
+  }, []);
+
+  // Organize emails into tag-based buckets
+  const organizeEmailsIntoBuckets = useCallback((emails: EmailThread[], tags: any[]) => {
+    const bucketMap = new Map<number | string, EmailThread[]>();
+    const untaggedEmails: EmailThread[] = [];
+    
+    // Initialize buckets for each tag
+    tags.forEach(tag => {
+      bucketMap.set(tag.id, []);
+    });
+
+    // Organize emails by their tags
+    emails.forEach(email => {
+      if (email.tags && email.tags.length > 0) {
+        // Add to each tag bucket
+        email.tags.forEach(tag => {
+          const bucket = bucketMap.get(tag.id);
+          if (bucket) {
+            bucket.push(email);
+          }
+        });
+      } else {
+        // Collect untagged emails separately
+        untaggedEmails.push(email);
+      }
+    });
+
+    // Convert tag buckets to bucket format
+    const tagBuckets = tags.map(tag => {
+      const bucketEmails = bucketMap.get(tag.id) || [];
+      
+      // Get icon based on tag name (fallback to default icons)
+      let icon = <Mail className="w-4 h-4" />;
+      switch (tag.name) {
+        case 'Important':
+          icon = <CheckCircle2 className="w-4 h-4" />;
+          break;
+        case 'Can wait':
+          icon = <Clock className="w-4 h-4" />;
+          break;
+        case 'Auto-archive':
+          icon = <Archive className="w-4 h-4" />;
+          break;
+        case 'Newsletter':
+          icon = <Mail className="w-4 h-4" />;
+          break;
+      }
+
+      return {
+        id: tag.id,
+        name: tag.name,
+        icon,
+        color: `bg-gray-100 text-gray-800`, // Will be styled based on tag.color
+        emails: bucketEmails,
+        count: bucketEmails.length, // Use actual email count, not database stats
+        unreadCount: bucketEmails.filter(e => e.isUnread).length, // Calculate unread count
+      };
+    });
+
+    // Add Unassigned bucket if there are untagged emails
+    if (untaggedEmails.length > 0) {
+      const unassignedBucket = {
+        id: 'unassigned',
+        name: 'Unassigned',
+        icon: <Inbox className="w-4 h-4" />,
+        color: 'bg-gray-100 text-gray-600',
+        emails: untaggedEmails,
+        count: untaggedEmails.length,
+        unreadCount: untaggedEmails.filter(e => e.isUnread).length,
+      };
+      // Put Unassigned at the top
+      return [unassignedBucket, ...tagBuckets];
+    }
+
+    return tagBuckets;
   }, []);
 
   // Organize emails into buckets
@@ -155,52 +273,28 @@ export default function EmailBuckets({ className = '' }: EmailBucketsProps) {
     }));
   }, []);
 
-  // Main fetch and classify function
-  const fetchAndClassifyEmails = useCallback(async () => {
+  // Main fetch and organize function
+  const fetchAndOrganizeEmails = useCallback(async () => {
     try {
       setIsLoading(true);
       setError(null);
 
-      // For now, let's create some sample data to test the UI
-      // In the final implementation, this will fetch real emails
-      const sampleThreads: EmailThread[] = [
-        {
-          id: 'thread1',
-          snippet: 'Important meeting tomorrow at 2pm',
-          historyId: 'hist1',
-          subject: 'Team Meeting Tomorrow',
-          from: 'boss@company.com',
-          unread: true,
-          important: true,
-        },
-        {
-          id: 'thread2',
-          snippet: 'Your monthly newsletter with updates',
-          historyId: 'hist2',
-          subject: 'Monthly Newsletter - August',
-          from: 'newsletter@service.com',
-          unread: false,
-        },
-        {
-          id: 'thread3',
-          snippet: 'Receipt for your recent purchase',
-          historyId: 'hist3',
-          subject: 'Receipt #12345',
-          from: 'noreply@store.com',
-          unread: false,
-        },
-      ];
+      // Check sync status first
+      await checkSyncStatus();
 
-      // Sample classifications
-      const sampleClassifications: EmailClassification[] = [
-        { threadId: 'thread1', category: 'Important', confidence: 0.9, reasoning: 'Meeting from supervisor' },
-        { threadId: 'thread2', category: 'Newsletter', confidence: 0.8, reasoning: 'Marketing newsletter' },
-        { threadId: 'thread3', category: 'Auto-archive', confidence: 0.7, reasoning: 'Automated receipt' },
-      ];
+      // Fetch emails and tags from database
+      const [emails, tags] = await Promise.all([
+        fetchEmails(),
+        fetchTags(),
+      ]);
 
-      const organizedBuckets = organizeBuckets(sampleThreads, sampleClassifications);
+      console.warn('📧 Fetched data', { emailCount: emails.length, tagCount: tags.length });
+
+      // Organize emails into tag-based buckets
+      const organizedBuckets = organizeEmailsIntoBuckets(emails, tags);
       setBuckets(organizedBuckets);
       setLastUpdated(new Date());
+
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to load emails';
       setError(errorMessage);
@@ -208,17 +302,28 @@ export default function EmailBuckets({ className = '' }: EmailBucketsProps) {
     } finally {
       setIsLoading(false);
     }
-  }, [organizeBuckets]);
+  }, [checkSyncStatus, fetchEmails, fetchTags, organizeEmailsIntoBuckets]);
 
   // Auto-fetch on component mount
   useEffect(() => {
-    fetchAndClassifyEmails();
-  }, [fetchAndClassifyEmails]);
+    fetchAndOrganizeEmails();
+  }, [fetchAndOrganizeEmails]);
 
   // Manual refresh
   const handleRefresh = useCallback(() => {
-    fetchAndClassifyEmails();
-  }, [fetchAndClassifyEmails]);
+    fetchAndOrganizeEmails();
+  }, [fetchAndOrganizeEmails]);
+
+  // Handle sync button
+  const handleSync = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      await triggerSync(true); // Force sync
+      await fetchAndOrganizeEmails();
+    } catch (error) {
+      console.error('Manual sync failed:', error);
+    }
+  }, [triggerSync, fetchAndOrganizeEmails]);
 
   if (isLoading) {
     return (
@@ -271,22 +376,40 @@ export default function EmailBuckets({ className = '' }: EmailBucketsProps) {
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-lg font-semibold text-gray-900">Email Categories</h2>
         <div className="flex items-center space-x-2">
-          {isClassifying && (
-            <div className="flex items-center text-sm text-blue-600">
-              <Sparkles className="w-4 h-4 animate-pulse mr-1" />
-              Classifying...
+          {syncStatus && !syncStatus.hasInitialSync && (
+            <div className="flex items-center text-sm text-orange-600">
+              <Database className="w-4 h-4 mr-1" />
+              Syncing...
             </div>
           )}
           <button
+            onClick={handleSync}
+            disabled={isLoading}
+            className="p-2 text-blue-500 hover:text-blue-700 rounded-md hover:bg-blue-50 disabled:opacity-50"
+            title="Sync emails"
+          >
+            <Database className={`w-4 h-4 ${isLoading ? 'animate-pulse' : ''}`} />
+          </button>
+          <button
             onClick={handleRefresh}
-            disabled={isClassifying}
+            disabled={isLoading}
             className="p-2 text-gray-500 hover:text-gray-700 rounded-md hover:bg-gray-100 disabled:opacity-50"
             title="Refresh"
           >
-            <RefreshCw className={`w-4 h-4 ${isClassifying ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
           </button>
         </div>
       </div>
+
+      {syncStatus && (
+        <div className="mb-4 text-xs text-gray-500">
+          {syncStatus.hasInitialSync ? (
+            `${syncStatus.totalEmails} emails synced • ${syncStatus.unreadEmails} unread`
+          ) : (
+            'No emails synced yet'
+          )}
+        </div>
+      )}
 
       {lastUpdated && (
         <p className="text-xs text-gray-500 mb-4">
@@ -296,7 +419,7 @@ export default function EmailBuckets({ className = '' }: EmailBucketsProps) {
 
       <div className="space-y-3">
         {buckets.map(bucket => (
-          <div key={bucket.name} className="border border-gray-200 rounded-lg overflow-hidden">
+          <div key={bucket.id} className="border border-gray-200 rounded-lg overflow-hidden">
             <div className="flex items-center justify-between p-3 bg-gray-50">
               <div className="flex items-center space-x-2">
                 {bucket.icon}
@@ -306,9 +429,12 @@ export default function EmailBuckets({ className = '' }: EmailBucketsProps) {
                 </span>
               </div>
               {bucket.count > 0 && (
-                <button className="text-xs text-gray-500 hover:text-gray-700">
+                <a 
+                  href="/emails"
+                  className="text-xs text-gray-500 hover:text-gray-700"
+                >
                   View all
-                </button>
+                </a>
               )}
             </div>
             
@@ -322,22 +448,22 @@ export default function EmailBuckets({ className = '' }: EmailBucketsProps) {
                           {email.subject || 'No subject'}
                         </p>
                         <p className="text-gray-600 text-xs truncate">
-                          {email.from || 'Unknown sender'}
+                          {email.fromName || email.fromAddress || 'Unknown sender'}
                         </p>
                         <p className="text-gray-500 text-xs mt-1 line-clamp-2">
                           {email.snippet}
                         </p>
-                        {email.confidence && (
+                        {email.tags && email.tags.length > 0 && (
                           <div className="flex items-center mt-1 text-xs text-gray-400">
                             <Sparkles className="w-3 h-3 mr-1" />
-                            {Math.round(email.confidence * 100)}% confident
-                            {email.reasoning && (
-                              <span className="ml-1">• {email.reasoning}</span>
+                            Tagged by {email.tags[0].assignedBy}
+                            {email.tags[0].confidence && (
+                              <span className="ml-1">• {Math.round(email.tags[0].confidence * 100)}% confident</span>
                             )}
                           </div>
                         )}
                       </div>
-                      {email.unread && (
+                      {email.isUnread && (
                         <div className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0 ml-2 mt-1"></div>
                       )}
                     </div>

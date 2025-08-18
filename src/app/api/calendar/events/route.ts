@@ -3,6 +3,28 @@ import { cookies } from 'next/headers';
 import * as calendarTools from '@/tools/calendar';
 import { refreshAccessToken, createOAuth2Client } from '@/lib/auth';
 
+// Type definitions for Google Calendar events
+interface GoogleCalendarEvent {
+  id: string;
+  summary?: string;
+  description?: string;
+  start?: {
+    dateTime?: string;
+    date?: string;
+  };
+  end?: {
+    dateTime?: string;
+    date?: string;
+  };
+  location?: string;
+  attendees?: GoogleCalendarAttendee[];
+}
+
+interface GoogleCalendarAttendee {
+  email: string;
+  displayName?: string;
+}
+
 // Helper to get tokens from cookies
 async function getTokensFromCookies() {
   const cookieStore = await cookies();
@@ -92,18 +114,24 @@ export async function GET(request: NextRequest) {
       dateRange: timeMin && timeMax ? `${timeMin} to ${timeMax}` : 'all',
     });
 
-    // Transform events to react-big-calendar format
-    const transformedEvents = events.map((event: any) => ({
+    // Transform events to match CalendarView component expectations
+    const transformedEvents = events.map((event: GoogleCalendarEvent) => ({
       id: event.id,
-      title: event.summary || 'Untitled Event',
-      start: new Date(event.start?.dateTime || event.start?.date),
-      end: new Date(event.end?.dateTime || event.end?.date),
-      allDay: !event.start?.dateTime, // All-day if no time specified
+      summary: event.summary || 'Untitled Event',
       description: event.description || '',
+      start: {
+        dateTime: event.start?.dateTime,
+        date: event.start?.date
+      },
+      end: {
+        dateTime: event.end?.dateTime,
+        date: event.end?.date  
+      },
       location: event.location || '',
-      attendees: event.attendees?.map((attendee: any) => attendee.email) || [],
-      // Add original event data for reference
-      originalEvent: event,
+      attendees: event.attendees?.map((attendee: GoogleCalendarAttendee) => ({
+        email: attendee.email,
+        displayName: attendee.displayName
+      })) || []
     }));
 
     const response = NextResponse.json({

@@ -13,6 +13,7 @@ type ContentBlock =
 type ChatBody = {
   message: string;
   conversation?: Array<{ role: 'user' | 'assistant'; content: string }>;
+  skipTools?: boolean;
 };
 
 // Initialize Anthropic client
@@ -55,6 +56,7 @@ export async function POST(request: NextRequest) {
     
     const message = body.message;
     const conversation = validateConversation(body.conversation);
+    const skipTools = body.skipTools || false;
     
     console.warn(`[${timestamp}] 📝 User message:`, message);
     console.warn(`[${timestamp}] 💬 Conversation length:`, conversation.length);
@@ -90,7 +92,26 @@ export async function POST(request: NextRequest) {
       },
     ];
 
-    // Call Claude with tools
+    // Call Claude with or without tools
+    if (skipTools) {
+      console.warn(`[${timestamp}] 🤖 Calling Claude without tools (direct response mode)`);
+      const response = await anthropic.messages.create({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 4096,
+        system: systemPrompt,
+        messages,
+      });
+
+      const textBlocks = response.content.filter(block => block.type === 'text');
+      const responseText = textBlocks.map(block => block.text).join('\n');
+      
+      return NextResponse.json({
+        success: true,
+        response: responseText,
+        usage: response.usage,
+      });
+    }
+
     console.warn(`[${timestamp}] 🤖 Calling Claude with ${tools.length} tools available`);
     const response = await anthropic.messages.create({
       model: 'claude-sonnet-4-20250514',
