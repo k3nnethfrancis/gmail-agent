@@ -25,8 +25,8 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000
 ### **Installation & Setup**
 ```bash
 # Clone and install
-git clone [repo-url]
-cd tenex
+git clone https://github.com/k3nnethfrancis/gmail-agent.git
+cd gmail-agent
 npm install
 
 # Setup environment

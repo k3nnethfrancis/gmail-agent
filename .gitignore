@@ -39,3 +39,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# project-specific files to ignore
+docs/strategy-question.md
+docs/engineering-project.md
