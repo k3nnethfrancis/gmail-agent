@@ -45,5 +45,6 @@ docs/strategy-question.md
 docs/engineering-project.md
 
 # database files
+data/*.db
 data/*.db-shm
 data/*.db-wal
