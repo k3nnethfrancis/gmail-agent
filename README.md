@@ -24,8 +24,8 @@ A powerful AI-powered calendar and email management system built with Next.js 15
 ### 1. Clone and Install
 
 ```bash
-git clone <repository-url>
-cd tenex
+git clone https://github.com/k3nnethfrancis/gmail-agent.git
+cd gmail-agent
 npm install
 ```
 
@@ -116,7 +116,7 @@ Visit `http://localhost:3000` and authenticate with Google.
 ## 📁 Project Structure
 
 ```
-tenex/
+gmail-agent/
 ├── src/
 │   ├── app/                    # Next.js 13+ app router
 │   │   ├── api/               # API routes
