@@ -79,11 +79,11 @@ export default function CalendarWidget({ mode, onModeChange }: CalendarWidgetPro
 
   useEffect(() => {
     fetchEvents();
-  }, [fetchEvents]);
+  }, [currentDate]); // Only depend on currentDate, not fetchEvents
 
   useEffect(() => {
     registerRefreshFunction(fetchEvents);
-  }, [registerRefreshFunction, fetchEvents]);
+  }, [registerRefreshFunction, currentDate]); // Use currentDate instead of fetchEvents
 
   // Get upcoming events for peek mode
   const getUpcomingEvents = () => {

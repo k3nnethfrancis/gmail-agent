@@ -62,7 +62,7 @@ export default function EmailWidget({ className = '', onViewChange }: EmailWidge
     // Refresh every 5 minutes
     const interval = setInterval(fetchEmailStats, 5 * 60 * 1000);
     return () => clearInterval(interval);
-  }, [fetchEmailStats]);
+  }, []); // Only run once on mount
 
   if (isLoading) {
     return (

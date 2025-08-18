@@ -100,7 +100,7 @@ export default function InboxWidget({ mode, onModeChange }: InboxWidgetProps) {
 
   useEffect(() => {
     fetchData();
-  }, [fetchData]);
+  }, []); // Only run once on mount
 
   // Get emails for selected category
   const getFilteredEmails = () => {

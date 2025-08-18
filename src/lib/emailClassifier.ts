@@ -1,18 +1,25 @@
 /**
- * LLM-Powered Email Classification Service
+ * Pure LLM Email Classification Service
  * 
- * Automatically categorizes emails using Claude Sonnet 4 based on content analysis.
- * Implements the core requirement for auto-classification on load.
+ * Automatically categorizes emails using Claude Sonnet 4 ONLY - no rule-based fallbacks.
+ * Implements intelligent, contextual classification with training examples integration.
  */
 
+import Anthropic from '@anthropic-ai/sdk';
 import { emailService, tagService, classificationService } from './database';
-import { getTokensFromCookies } from './auth';
+
+// Initialize Anthropic client
+const anthropic = new Anthropic({
+  apiKey: process.env.ANTHROPIC_API_KEY!,
+});
 
 interface ClassificationResult {
   emailId: string;
   suggestedTagId: number;
   confidence: number;
   reasoning: string;
+  category: string;
+  wasNewCategory: boolean;
 }
 
 interface EmailSummary {
@@ -24,26 +31,205 @@ interface EmailSummary {
   isImportant: boolean;
 }
 
+interface LLMClassificationResponse {
+  category: string;
+  reasoning: string;
+  confidence: number;
+}
+
+interface TrainingExample {
+  subject: string;
+  fromAddress: string;
+  snippet: string;
+  categoryName: string;
+}
+
 /**
- * Classify emails using Claude Sonnet 4 with training examples
- * Creates appropriate categories based on email content analysis and user examples
+ * Create LLM prompt for email classification with training examples
+ */
+function createClassificationPrompt(email: EmailSummary, trainingExamples: TrainingExample[], existingCategories: string[]): string {
+  const trainingExamplesText = trainingExamples.length > 0 
+    ? trainingExamples.slice(0, 20).map(ex => 
+        `Email: "${ex.subject}" from ${ex.fromAddress}\nSnippet: "${ex.snippet.substring(0, 100)}..."\nCategory: ${ex.categoryName}`
+      ).join('\n\n')
+    : 'No training examples yet.';
+
+  const existingCategoriesText = existingCategories.length > 0
+    ? existingCategories.join(', ')
+    : 'No existing categories.';
+
+  return `You are an expert email classifier. Analyze this email and assign it to the most appropriate category.
+
+TRAINING EXAMPLES (learn from these user-approved patterns):
+${trainingExamplesText}
+
+EXISTING CATEGORIES (prefer these when appropriate):
+${existingCategoriesText}
+
+CLASSIFICATION GUIDELINES:
+- Create meaningful, specific categories (not generic ones like "General")
+- Consider sender reputation, subject patterns, and content context
+- Use existing categories when the email clearly fits
+- Learn from training examples above - they represent user preferences
+- Be consistent with similar emails the user has already classified
+- Categories should be actionable and help organize the user's workflow
+
+EMAIL TO CLASSIFY:
+Subject: ${email.subject}
+From: ${email.fromAddress}${email.fromName ? ` (${email.fromName})` : ''}
+Content: ${email.snippet}
+${email.isImportant ? 'This email is marked as IMPORTANT.' : ''}
+
+Respond with ONLY a JSON object in this exact format:
+{"reasoning": "Brief explanation of why this category fits", "category": "Category Name", "confidence": 0.95}`;
+}
+
+/**
+ * Classify a single email using Claude Sonnet 4
+ */
+async function classifySingleEmailWithLLM(
+  email: EmailSummary, 
+  trainingExamples: TrainingExample[], 
+  existingCategories: string[]
+): Promise<LLMClassificationResponse> {
+  try {
+    const prompt = createClassificationPrompt(email, trainingExamples, existingCategories);
+    
+    const response = await anthropic.messages.create({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 1000,
+      messages: [{
+        role: 'user',
+        content: prompt
+      }]
+    });
+
+    const textResponse = response.content
+      .filter(block => block.type === 'text')
+      .map(block => block.text)
+      .join('');
+
+    // Parse JSON response
+    let classificationData: LLMClassificationResponse;
+    try {
+      // Extract JSON from response (handle potential markdown formatting)
+      const jsonMatch = textResponse.match(/\{[^}]+\}/);
+      if (!jsonMatch) {
+        throw new Error('No JSON found in response');
+      }
+      classificationData = JSON.parse(jsonMatch[0]);
+    } catch (parseError) {
+      console.warn('Failed to parse LLM response as JSON:', textResponse);
+      // Fallback classification
+      return {
+        category: 'Unclassified',
+        reasoning: 'Failed to parse LLM response',
+        confidence: 0.3
+      };
+    }
+
+    // Validate response structure
+    if (!classificationData.reasoning || !classificationData.category || typeof classificationData.confidence !== 'number') {
+      throw new Error('Invalid LLM response structure');
+    }
+
+    // Ensure confidence is between 0 and 1
+    classificationData.confidence = Math.max(0, Math.min(1, classificationData.confidence));
+
+    return classificationData;
+
+  } catch (error) {
+    console.error('LLM classification error for email:', email.id, error);
+    // Fallback for API errors
+    return {
+      category: 'Unclassified',
+      reasoning: 'Classification failed due to API error',
+      confidence: 0.2
+    };
+  }
+}
+
+/**
+ * Classify emails using pure LLM approach with training examples
  */
 export async function classifyEmailsWithLLM(emails: EmailSummary[]): Promise<ClassificationResult[]> {
   try {
+    console.warn(`🤖 Starting pure LLM classification for ${emails.length} emails...`);
+    
     // Get existing tags and training examples
     const existingTags = tagService.getAllTags();
+    const existingCategories = existingTags.map(tag => tag.name);
     const trainingExamples = getTrainingExamples();
     
-    // For now, use rule-based classification but with better categories and training awareness
+    console.warn(`📚 Using ${trainingExamples.length} training examples and ${existingCategories.length} existing categories`);
+    
     const results: ClassificationResult[] = [];
     
-    // Analyze emails and create organic categories as needed
-    for (const email of emails) {
-      const classification = await classifySingleEmailWithContext(email, existingTags, trainingExamples);
-      results.push(classification);
+    // Process each email individually for better accuracy
+    for (let i = 0; i < emails.length; i++) {
+      const email = emails[i];
+      console.warn(`🔍 Classifying email ${i + 1}/${emails.length}: "${email.subject.substring(0, 50)}..."`);
+      
+      try {
+        // Get LLM classification
+        const llmResponse = await classifySingleEmailWithLLM(email, trainingExamples, existingCategories);
+        
+        // Find or create the category
+        let tag = existingTags.find(t => t.name.toLowerCase() === llmResponse.category.toLowerCase());
+        let wasNewCategory = false;
+        
+        if (!tag) {
+          // Create new category with LLM-suggested name
+          const color = generateColorForCategory(llmResponse.category);
+          tag = tagService.createTag(
+            llmResponse.category,
+            color,
+            `AI-created category: ${llmResponse.reasoning}`
+          );
+          wasNewCategory = true;
+          console.warn(`🏷️ Created new category: "${llmResponse.category}"`);
+          
+          // Add to existing categories for subsequent classifications in this batch
+          existingCategories.push(llmResponse.category);
+          existingTags.push(tag);
+        }
+        
+        results.push({
+          emailId: email.id,
+          suggestedTagId: tag.id,
+          confidence: llmResponse.confidence,
+          reasoning: llmResponse.reasoning,
+          category: llmResponse.category,
+          wasNewCategory
+        });
+        
+        // Small delay between API calls to be respectful
+        if (i < emails.length - 1) {
+          await new Promise(resolve => setTimeout(resolve, 200));
+        }
+        
+      } catch (emailError) {
+        console.error(`Failed to classify email ${email.id}:`, emailError);
+        // Create fallback classification
+        let fallbackTag = existingTags.find(t => t.name === 'Unclassified');
+        if (!fallbackTag) {
+          fallbackTag = tagService.createTag('Unclassified', '#6b7280', 'Fallback category for classification failures');
+        }
+        
+        results.push({
+          emailId: email.id,
+          suggestedTagId: fallbackTag.id,
+          confidence: 0.1,
+          reasoning: 'Classification failed - requires manual review',
+          category: 'Unclassified',
+          wasNewCategory: false
+        });
+      }
     }
 
-    console.warn(`🤖 Organic Classification completed: ${results.length} emails classified`);
+    const newCategoriesCount = results.filter(r => r.wasNewCategory).length;
+    console.warn(`✅ Pure LLM Classification completed: ${results.length} emails classified, ${newCategoriesCount} new categories created`);
+    
     return results;
 
   } catch (error) {
@@ -52,20 +238,6 @@ export async function classifyEmailsWithLLM(emails: EmailSummary[]): Promise<Cla
   }
 }
 
-/**
- * Calculate similarity between two strings using simple word overlap
- */
-function calculateSimilarity(str1: string, str2: string): number {
-  if (!str1 || !str2) return 0;
-  
-  const words1 = str1.toLowerCase().split(/\s+/).filter(w => w.length > 2);
-  const words2 = str2.toLowerCase().split(/\s+/).filter(w => w.length > 2);
-  
-  if (words1.length === 0 || words2.length === 0) return 0;
-  
-  const commonWords = words1.filter(w => words2.includes(w));
-  return commonWords.length / Math.max(words1.length, words2.length);
-}
 
 /**
  * Generate a color for a category based on its name
@@ -92,125 +264,6 @@ function generateColorForCategory(categoryName: string): string {
   return colors[Math.abs(hash) % colors.length];
 }
 
-/**
- * Rule-based classification fallback
- */
-function classifyByRules(subject: string, snippet: string, fromAddress: string, isImportant: boolean): {
-  categoryName: string;
-  reasoning: string;
-  confidence: number;
-  color: string;
-} {
-  // Enhanced rule-based classification with better patterns
-  if (
-    subject.includes('delivery status notification') ||
-    subject.includes('failed') ||
-    subject.includes('bounce') ||
-    subject.includes('undelivered') ||
-    subject.includes('mail delivery') ||
-    fromAddress.includes('mailer-daemon')
-  ) {
-    return {
-      categoryName: 'System Notifications',
-      reasoning: 'Email delivery or system notification',
-      confidence: 0.9,
-      color: '#6b7280'
-    };
-  } 
-  
-  if (
-    subject.includes('newsletter') ||
-    subject.includes('digest') ||
-    subject.includes('weekly') ||
-    subject.includes('unsubscribe') ||
-    fromAddress.includes('noreply') ||
-    fromAddress.includes('no-reply') ||
-    snippet.includes('unsubscribe') ||
-    snippet.includes('promotional')
-  ) {
-    return {
-      categoryName: 'Newsletters',
-      reasoning: 'Newsletter or promotional email',
-      confidence: 0.85,
-      color: '#3b82f6'
-    };
-  }
-  
-  if (
-    subject.includes('urgent') ||
-    subject.includes('important') ||
-    subject.includes('asap') ||
-    subject.includes('action required') ||
-    subject.includes('immediate') ||
-    isImportant
-  ) {
-    return {
-      categoryName: 'Urgent',
-      reasoning: 'Marked as urgent or important',
-      confidence: 0.8,
-      color: '#dc2626'
-    };
-  }
-  
-  if (
-    subject.includes('invoice') ||
-    subject.includes('payment') ||
-    subject.includes('bill') ||
-    subject.includes('receipt') ||
-    subject.includes('transaction') ||
-    subject.includes('paypal') ||
-    subject.includes('bank') ||
-    fromAddress.includes('billing')
-  ) {
-    return {
-      categoryName: 'Financial',
-      reasoning: 'Financial or billing related',
-      confidence: 0.85,
-      color: '#059669'
-    };
-  }
-  
-  if (
-    fromAddress.includes('github') ||
-    fromAddress.includes('gitlab') ||
-    fromAddress.includes('bitbucket') ||
-    subject.includes('pull request') ||
-    subject.includes('commit') ||
-    subject.includes('merge') ||
-    subject.includes('deployment') ||
-    fromAddress.includes('build')
-  ) {
-    return {
-      categoryName: 'Development',
-      reasoning: 'Software development related',
-      confidence: 0.8,
-      color: '#7c3aed'
-    };
-  }
-  
-  if (
-    subject.includes('meeting') ||
-    subject.includes('calendar') ||
-    subject.includes('appointment') ||
-    subject.includes('reminder') ||
-    snippet.includes('meeting')
-  ) {
-    return {
-      categoryName: 'Meetings',
-      reasoning: 'Meeting or calendar related',
-      confidence: 0.75,
-      color: '#0891b2'
-    };
-  }
-  
-  // Default category
-  return {
-    categoryName: 'General',
-    reasoning: 'General email requiring review',
-    confidence: 0.6,
-    color: '#d97706'
-  };
-}
 
 /**
  * Get training examples for improving classification
@@ -235,115 +288,56 @@ function getTrainingExamples(): Array<{
   }
 }
 
-/**
- * Classify a single email with training context
- */
-async function classifySingleEmailWithContext(
-  email: EmailSummary, 
-  existingTags: Array<{id: number; name: string; color: string; description: string; isSystemTag: boolean}>,
-  trainingExamples: Array<{subject: string; fromAddress: string; snippet: string; categoryName: string}>
-): Promise<ClassificationResult> {
-  const subject = (email.subject || '').toLowerCase();
-  const snippet = (email.snippet || '').toLowerCase();  
-  const fromAddress = (email.fromAddress || '').toLowerCase();
-  
-  let categoryName: string;
-  let reasoning: string;
-  let confidence = 0.8;
-  let color: string;
-  
-  // First, try to match against training examples
-  let bestMatch: {categoryName: string; confidence: number; reasoning: string} | null = null;
-  
-  if (trainingExamples.length > 0) {
-    for (const example of trainingExamples) {
-      const subjectSimilarity = calculateSimilarity(subject, example.subject.toLowerCase());
-      const fromSimilarity = calculateSimilarity(fromAddress, example.fromAddress.toLowerCase());
-      const snippetSimilarity = calculateSimilarity(snippet, example.snippet.toLowerCase());
-      
-      // Weighted similarity score
-      const overallSimilarity = (subjectSimilarity * 0.5) + (fromSimilarity * 0.3) + (snippetSimilarity * 0.2);
-      
-      if (overallSimilarity > 0.3 && (!bestMatch || overallSimilarity > bestMatch.confidence)) {
-        bestMatch = {
-          categoryName: example.categoryName,
-          confidence: overallSimilarity,
-          reasoning: `Similar to training example: "${example.subject.substring(0, 50)}..."`
-        };
-      }
-    }
-  }
-  
-  // Use training example match if found
-  if (bestMatch && bestMatch.confidence > 0.4) {
-    categoryName = bestMatch.categoryName;
-    reasoning = bestMatch.reasoning;
-    confidence = bestMatch.confidence;
-    
-    // Find existing color or use default
-    const existingTag = existingTags.find(t => t.name === categoryName);
-    color = existingTag?.color || generateColorForCategory(categoryName);
-  } else {
-    // Fall back to improved rule-based classification
-    const classification = classifyByRules(subject, snippet, fromAddress, email.isImportant);
-    categoryName = classification.categoryName;
-    reasoning = classification.reasoning;
-    confidence = classification.confidence;
-    color = classification.color;
-  }
-  
-  // Find or create the category
-  let tag = existingTags.find(t => t.name === categoryName);
-  if (!tag) {
-    // Create new organic category
-    tag = tagService.createTag(
-      categoryName,
-      color,
-      `Automatically created category: ${reasoning}`
-    );
-    console.warn(`🏷️ Created new organic category: "${categoryName}"`);
-  }
-  
-  return {
-    emailId: email.id,
-    suggestedTagId: tag.id,
-    confidence,
-    reasoning
-  };
-}
 
 /**
  * Auto-classify all untagged emails in the database
  */
-export async function autoClassifyEmails(): Promise<{
+export async function autoClassifyEmails(overwriteExisting: boolean = false): Promise<{
   success: boolean;
   classified: number;
   errors: number;
   message: string;
 }> {
   try {
-    console.warn('🚀 Starting auto-classification of emails...');
+    console.warn(`🚀 Starting auto-classification of emails (overwrite: ${overwriteExisting})...`);
     
-    // Get all emails without tags
+    // Get emails based on overwrite setting
     const allEmails = emailService.getEmails({ limit: 200 });
-    const untaggedEmails = allEmails.filter(email => {
-      const tags = tagService.getEmailTags(email.id);
-      return tags.length === 0;
-    });
-
-    if (untaggedEmails.length === 0) {
-      return {
-        success: true,
-        classified: 0,
-        errors: 0,
-        message: 'No emails need classification'
-      };
+    let targetEmails;
+    
+    if (overwriteExisting) {
+      // Classify ALL emails, removing existing tags first
+      targetEmails = allEmails;
+      console.warn(`📧 Processing all ${targetEmails.length} emails (removing existing classifications)`);
+      
+      // Remove existing tags from all emails
+      for (const email of targetEmails) {
+        const existingTags = tagService.getEmailTags(email.id);
+        for (const tag of existingTags) {
+          tagService.removeTagFromEmail(email.id, tag.id);
+        }
+      }
+    } else {
+      // Only classify untagged emails
+      targetEmails = allEmails.filter(email => {
+        const tags = tagService.getEmailTags(email.id);
+        return tags.length === 0;
+      });
+      
+      if (targetEmails.length === 0) {
+        return {
+          success: true,
+          classified: 0,
+          errors: 0,
+          message: 'No emails need classification'
+        };
+      }
+      
+      console.warn(`📧 Found ${targetEmails.length} untagged emails for classification`);
     }
 
-    console.warn(`📧 Found ${untaggedEmails.length} untagged emails for classification`);
-
     // Prepare email summaries for LLM
-    const emailSummaries: EmailSummary[] = untaggedEmails.map(email => ({
+    const emailSummaries: EmailSummary[] = targetEmails.map(email => ({
       id: email.id,
       subject: email.subject,
       fromAddress: email.fromAddress,
@@ -393,7 +387,7 @@ export async function autoClassifyEmails(): Promise<{
       }
     }
 
-    const message = `Auto-classification complete: ${totalClassified} emails classified, ${totalErrors} errors`;
+    const message = `Auto-classification complete: ${totalClassified} emails classified, ${totalErrors} errors${overwriteExisting ? ' (overwrote existing)' : ''}`;
     console.warn(`✅ ${message}`);
 
     return {
@@ -419,18 +413,21 @@ export async function autoClassifyEmails(): Promise<{
 /**
  * Classify specific emails by ID (for bulk operations)
  */
-export async function classifySpecificEmails(emailIds: string[]): Promise<{
+export async function classifySpecificEmails(
+  emailIds: string[], 
+  overwriteExisting: boolean = false
+): Promise<{
   success: boolean;
   classified: number;
   errors: number;
   message: string;
 }> {
   try {
-    console.warn(`🎯 Starting classification of ${emailIds.length} specific emails...`);
+    console.warn(`🎯 Starting classification of ${emailIds.length} specific emails (overwrite: ${overwriteExisting})...`);
     
     // Get the specific emails from database
     const allEmails = emailService.getEmails({ limit: 1000 });
-    const targetEmails = allEmails.filter(email => emailIds.includes(email.id));
+    let targetEmails = allEmails.filter(email => emailIds.includes(email.id));
 
     if (targetEmails.length === 0) {
       return {
@@ -441,13 +438,33 @@ export async function classifySpecificEmails(emailIds: string[]): Promise<{
       };
     }
 
-    console.warn(`📧 Found ${targetEmails.length} emails to classify`);
-
-    // Remove existing tags from these emails first (for re-classification)
-    for (const email of targetEmails) {
-      const existingTags = tagService.getEmailTags(email.id);
-      for (const tag of existingTags) {
-        tagService.removeTagFromEmail(email.id, tag.id);
+    // Filter for unclassified only if overwriteExisting is false
+    if (!overwriteExisting) {
+      const unclassifiedEmails = targetEmails.filter(email => {
+        const tags = tagService.getEmailTags(email.id);
+        return tags.length === 0;
+      });
+      
+      if (unclassifiedEmails.length === 0) {
+        return {
+          success: true,
+          classified: 0,
+          errors: 0,
+          message: 'All selected emails are already classified. Use overwrite option to reclassify.'
+        };
+      }
+      
+      targetEmails = unclassifiedEmails;
+      console.warn(`📧 Found ${targetEmails.length} unclassified emails out of ${emailIds.length} selected`);
+    } else {
+      console.warn(`📧 Processing all ${targetEmails.length} emails (including already classified)`);
+      
+      // Remove existing tags from these emails for re-classification
+      for (const email of targetEmails) {
+        const existingTags = tagService.getEmailTags(email.id);
+        for (const tag of existingTags) {
+          tagService.removeTagFromEmail(email.id, tag.id);
+        }
       }
     }
 
@@ -530,5 +547,153 @@ export async function checkAndTriggerAutoClassification(): Promise<boolean> {
   } catch (error) {
     console.error('Auto-classification check failed:', error);
     return false;
+  }
+}
+
+/**
+ * Classify a single email using LLM (for real-time classification)
+ */
+export async function classifySingleEmail(email: EmailSummary): Promise<ClassificationResult> {
+  try {
+    const existingTags = tagService.getAllTags();
+    const existingCategories = existingTags.map(tag => tag.name);
+    const trainingExamples = getTrainingExamples();
+    
+    // Get LLM classification
+    const llmResponse = await classifySingleEmailWithLLM(email, trainingExamples, existingCategories);
+    
+    // Find or create the category
+    let tag = existingTags.find(t => t.name.toLowerCase() === llmResponse.category.toLowerCase());
+    let wasNewCategory = false;
+    
+    if (!tag) {
+      // Create new category
+      const color = generateColorForCategory(llmResponse.category);
+      tag = tagService.createTag(
+        llmResponse.category,
+        color,
+        `AI-created category: ${llmResponse.reasoning}`
+      );
+      wasNewCategory = true;
+      console.warn(`🏷️ Created new category for single email: "${llmResponse.category}"`);
+    }
+    
+    return {
+      emailId: email.id,
+      suggestedTagId: tag.id,
+      confidence: llmResponse.confidence,
+      reasoning: llmResponse.reasoning,
+      category: llmResponse.category,
+      wasNewCategory
+    };
+    
+  } catch (error) {
+    console.error('Single email classification failed:', error);
+    // Create fallback classification
+    const existingTags = tagService.getAllTags();
+    let fallbackTag = existingTags.find(t => t.name === 'Unclassified');
+    if (!fallbackTag) {
+      fallbackTag = tagService.createTag('Unclassified', '#6b7280', 'Fallback category for classification failures');
+    }
+    
+    return {
+      emailId: email.id,
+      suggestedTagId: fallbackTag.id,
+      confidence: 0.1,
+      reasoning: 'Classification failed - requires manual review',
+      category: 'Unclassified',
+      wasNewCategory: false
+    };
+  }
+}
+
+/**
+ * Classify new incoming emails automatically
+ */
+export async function classifyNewEmails(): Promise<{
+  success: boolean;
+  classified: number;
+  errors: number;
+  message: string;
+}> {
+  try {
+    console.warn('🔄 Checking for new emails to classify...');
+    
+    // Get all emails without tags (new emails)
+    const allEmails = emailService.getEmails({ limit: 50 }); // Check recent emails only
+    const untaggedEmails = allEmails.filter(email => {
+      const tags = tagService.getEmailTags(email.id);
+      return tags.length === 0;
+    });
+
+    if (untaggedEmails.length === 0) {
+      return {
+        success: true,
+        classified: 0,
+        errors: 0,
+        message: 'No new emails to classify'
+      };
+    }
+
+    console.warn(`📧 Found ${untaggedEmails.length} new emails to classify`);
+
+    // Classify each new email
+    let totalClassified = 0;
+    let totalErrors = 0;
+
+    for (const email of untaggedEmails) {
+      try {
+        const emailSummary: EmailSummary = {
+          id: email.id,
+          subject: email.subject,
+          fromAddress: email.fromAddress,
+          fromName: email.fromName,
+          snippet: email.snippet,
+          isImportant: email.isImportant
+        };
+
+        const classification = await classifySingleEmail(emailSummary);
+        
+        // Apply classification
+        tagService.assignTagToEmail(
+          classification.emailId,
+          classification.suggestedTagId,
+          'ai',
+          classification.confidence,
+          classification.reasoning
+        );
+        
+        totalClassified++;
+        console.warn(`✅ Classified: "${email.subject.substring(0, 30)}..." → ${classification.category}`);
+        
+        // Small delay between classifications
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+      } catch (error) {
+        console.error(`Failed to classify email ${email.id}:`, error);
+        totalErrors++;
+      }
+    }
+
+    const message = `New email classification complete: ${totalClassified} emails classified, ${totalErrors} errors`;
+    console.warn(`✅ ${message}`);
+
+    return {
+      success: totalClassified > 0,
+      classified: totalClassified,
+      errors: totalErrors,
+      message
+    };
+
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'New email classification failed';
+    console.error('New email classification error:', error);
+    
+    return {
+      success: false,
+      classified: 0,
+      errors: 1,
+      message: errorMessage
+    };
   }
 }
