@@ -11,18 +11,22 @@ import {
   Plus,
   Star,
   Archive,
-  X
+  X,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
+import { useState, useMemo } from 'react';
 import { EmailThread, UseEmailActionsReturn } from '../../hooks/useEmailActions';
 
 interface EmailListProps {
   filteredEmails: EmailThread[];
-  selectedCategory: number | 'unassigned';
+  selectedCategory: number | 'unassigned' | 'all';
   emailActions: UseEmailActionsReturn;
   formatEmailDate: (dateString: string) => string;
   getSenderName: (email: EmailThread) => string;
   selectedEmail: EmailThread | null;
   onEmailSelect: (email: EmailThread | null) => void;
+  itemsPerPage?: number;
 }
 
 export default function EmailList({
@@ -32,8 +36,10 @@ export default function EmailList({
   formatEmailDate,
   getSenderName,
   selectedEmail,
-  onEmailSelect
+  onEmailSelect,
+  itemsPerPage = 20
 }: EmailListProps) {
+  const [currentPage, setCurrentPage] = useState(1);
   const {
     editingEmailCategory,
     newCategoryInput,
@@ -45,6 +51,23 @@ export default function EmailList({
     setNewCategoryInput
   } = emailActions;
 
+  // Calculate pagination
+  const totalPages = Math.ceil(filteredEmails.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedEmails = filteredEmails.slice(startIndex, endIndex);
+
+  // Reset to page 1 when filtered emails change
+  useMemo(() => {
+    setCurrentPage(1);
+  }, [filteredEmails.length, selectedCategory]);
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    // Scroll to top of email list when page changes
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   if (filteredEmails.length === 0) {
     return (
       <div className="flex items-center justify-center h-full">
@@ -54,9 +77,11 @@ export default function EmailList({
             No emails in this category
           </h3>
           <p className="text-gray-600">
-            {selectedCategory === 'unassigned' 
-              ? 'All emails have been categorized!'
-              : 'No emails found in this category.'
+            {selectedCategory === 'all'
+              ? 'No emails found.'
+              : selectedCategory === 'unassigned' 
+                ? 'All emails have been categorized!'
+                : 'No emails found in this category.'
             }
           </p>
         </div>
@@ -64,16 +89,124 @@ export default function EmailList({
     );
   }
 
+  const renderPaginationControls = () => {
+    if (totalPages <= 1) return null;
+
+    const getPageNumbers = () => {
+      const pages = [];
+      const maxVisiblePages = 5;
+      
+      if (totalPages <= maxVisiblePages) {
+        for (let i = 1; i <= totalPages; i++) {
+          pages.push(i);
+        }
+      } else {
+        // Always show first page
+        pages.push(1);
+        
+        if (currentPage > 3) {
+          pages.push('...');
+        }
+        
+        // Show pages around current page
+        for (let i = Math.max(2, currentPage - 1); i <= Math.min(totalPages - 1, currentPage + 1); i++) {
+          if (!pages.includes(i)) {
+            pages.push(i);
+          }
+        }
+        
+        if (currentPage < totalPages - 2) {
+          pages.push('...');
+        }
+        
+        // Always show last page
+        if (!pages.includes(totalPages)) {
+          pages.push(totalPages);
+        }
+      }
+      
+      return pages;
+    };
+
+    return (
+      <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200 bg-gray-50">
+        <div className="flex-1 flex justify-between sm:hidden">
+          <button
+            onClick={() => handlePageChange(currentPage - 1)}
+            disabled={currentPage === 1}
+            className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Previous
+          </button>
+          <button
+            onClick={() => handlePageChange(currentPage + 1)}
+            disabled={currentPage === totalPages}
+            className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Next
+          </button>
+        </div>
+        <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+          <div>
+            <p className="text-sm text-gray-700">
+              Showing <span className="font-medium">{startIndex + 1}</span> to{' '}
+              <span className="font-medium">{Math.min(endIndex, filteredEmails.length)}</span> of{' '}
+              <span className="font-medium">{filteredEmails.length}</span> emails
+            </p>
+          </div>
+          <div>
+            <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+              <button
+                onClick={() => handlePageChange(currentPage - 1)}
+                disabled={currentPage === 1}
+                className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <ChevronLeft className="h-5 w-5" />
+              </button>
+              {getPageNumbers().map((page, index) => (
+                page === '...' ? (
+                  <span key={`ellipsis-${index}`} className="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700">
+                    ...
+                  </span>
+                ) : (
+                  <button
+                    key={`page-${page}`}
+                    onClick={() => handlePageChange(page as number)}
+                    className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
+                      currentPage === page
+                        ? 'z-10 bg-blue-50 border-blue-500 text-blue-600'
+                        : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
+                    }`}
+                  >
+                    {page}
+                  </button>
+                )
+              ))}
+              <button
+                onClick={() => handlePageChange(currentPage + 1)}
+                disabled={currentPage === totalPages}
+                className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <ChevronRight className="h-5 w-5" />
+              </button>
+            </nav>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
-    <div className="divide-y divide-gray-200">
-      {filteredEmails.map((email) => (
+    <div>
+      <div className="divide-y divide-gray-200">
+        {paginatedEmails.map((email) => (
         <div
           key={email.id}
-          className={`p-4 hover:bg-gray-50 transition-colors group relative ${
+          className={`px-4 py-3 hover:bg-gray-50 transition-colors group relative ${
             selectedEmails.has(email.id) ? 'bg-blue-50 border-l-4 border-blue-500' : ''
           }`}
         >
-          <div className="flex items-start space-x-3">
+          <div className="flex items-start space-x-4">
             {/* Checkbox */}
             <div className="mt-1 flex-shrink-0">
               <input
@@ -86,7 +219,7 @@ export default function EmailList({
             </div>
 
             {/* Action Buttons - positioned early in flex layout */}
-            <div className="flex items-center space-x-1 flex-shrink-0">
+            <div className="flex items-center space-x-2 flex-shrink-0 mt-0.5">
               {editingEmailCategory === email.id ? (
                 <div className="bg-white border border-gray-300 rounded-lg shadow-lg p-2">
                   <div className="flex items-center space-x-2">
@@ -126,7 +259,7 @@ export default function EmailList({
                   </div>
                 </div>
               ) : (
-                <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="flex items-center space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
                   <button
                     onClick={() => {
                       setEditingEmailCategory(email.id);
@@ -139,9 +272,9 @@ export default function EmailList({
                   </button>
                   <button
                     onClick={() => handleMarkAsExample(email.id)}
-                    className={`p-1 rounded-full hover:bg-yellow-50 ${
+                    className={`p-1 rounded-full hover:bg-yellow-50 transition-colors ${
                       email.tags?.some(tag => tag.assignedBy === 'user')
-                        ? 'text-yellow-600'
+                        ? 'text-yellow-600 bg-yellow-50'
                         : 'text-gray-600 hover:text-yellow-700'
                     }`}
                     title={
@@ -150,7 +283,13 @@ export default function EmailList({
                         : 'Mark as training example'
                     }
                   >
-                    <Star className="w-4 h-4" />
+                    <Star 
+                      className={`w-4 h-4 ${
+                        email.tags?.some(tag => tag.assignedBy === 'user') 
+                          ? 'fill-current' 
+                          : ''
+                      }`} 
+                    />
                   </button>
                 </div>
               )}
@@ -164,14 +303,14 @@ export default function EmailList({
               <div className="flex items-start justify-between">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center space-x-2">
-                    <p className="text-sm font-medium text-gray-900 truncate">
+                    <p className="text-sm font-medium text-gray-900 truncate max-w-full overflow-hidden">
                       {getSenderName(email)}
                     </p>
                     {email.isUnread && (
                       <span className="inline-block w-2 h-2 bg-blue-500 rounded-full" />
                     )}
                   </div>
-                  <p className="text-sm text-gray-600 truncate mt-1">
+                  <p className="text-sm text-gray-600 truncate max-w-full overflow-hidden mt-1">
                     {email.subject}
                   </p>
                 </div>
@@ -180,7 +319,7 @@ export default function EmailList({
                 </div>
               </div>
 
-              <p className="text-sm text-gray-600 truncate">
+              <p className="text-sm text-gray-600 truncate max-w-full overflow-hidden">
                 {email.snippet}
               </p>
 
@@ -205,7 +344,10 @@ export default function EmailList({
 
           </div>
         </div>
-      ))}
+        ))}
+      </div>
+      
+      {renderPaginationControls()}
     </div>
   );
 }

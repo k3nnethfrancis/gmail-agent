@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { 
   RefreshCw,
   Star
@@ -20,15 +20,16 @@ import EmailList from './email/EmailList';
 export default function InboxView() {
   const [emails, setEmails] = useState<EmailThread[]>([]);
   const [tags, setTags] = useState<TagRecord[]>([]);
-  const [selectedCategory, setSelectedCategory] = useState<number | 'unassigned'>('unassigned');
+  const [selectedCategory, setSelectedCategory] = useState<number | 'unassigned' | 'all'>('all');
   const [selectedEmail, setSelectedEmail] = useState<EmailThread | null>(null);
 
   // Initialize unified state management and error handling
   const inboxState = useInboxState();
   const errorHandler = useErrorHandler();
 
-  // Fetch data with enhanced error handling
+  // Fetch data with enhanced error handling - memoized to prevent recreations
   const fetchData = useCallback(async () => {
+    
     const result = await errorHandler.handleAsyncOperation(
       async () => {
         inboxState.setLoading();
@@ -59,10 +60,11 @@ export default function InboxView() {
 
     inboxState.setIdle();
     return result;
-  }, []); // Remove all dependencies to prevent cascade re-renders
+  }, [errorHandler, inboxState]); // Minimal stable dependencies
 
   // Create stable refresh function that doesn't recreate
   const stableRefresh = useCallback(async () => {
+    
     try {
       const [emailsResponse, tagsResponse] = await Promise.all([
         fetch('/api/emails?limit=200'),
@@ -79,7 +81,7 @@ export default function InboxView() {
     }
   }, []); // No dependencies to prevent infinite recreation
 
-  // Initialize email actions hook
+  // Initialize email actions hook with stable references to prevent re-renders
   const emailActions = useEmailActions({
     emails,
     tags,
@@ -88,7 +90,18 @@ export default function InboxView() {
     inboxState
   });
 
+  // StrictMode-proof initialization guard
+  const hasInitializedRef = useRef(false);
+
   useEffect(() => {
+    console.warn('🔄 InboxView: useEffect triggered - checking initialization guard');
+    if (hasInitializedRef.current) {
+      console.warn('🚫 InboxView: Initialization already completed, skipping');
+      return; // Prevent re-entry in dev StrictMode
+    }
+    hasInitializedRef.current = true;
+    console.warn('✅ InboxView: Starting one-time initialization');
+
     const runInitialSetup = async () => {
       try {
         inboxState.setLoading();
@@ -174,11 +187,22 @@ export default function InboxView() {
 
     runInitialSetup();
   }, []); // Run only once on mount - no dependencies
+  
+  // Add component lifecycle debugging
+  useEffect(() => {
+    console.warn('🎆 InboxView: Component mounted');
+    return () => {
+      console.warn('📍 InboxView: Component unmounting');
+    };
+  }, []);
 
 
   // Memoize expensive filtering operation to prevent recalculation on every render
   const filteredEmails = useMemo(() =>
     emails.filter(email => {
+      if (selectedCategory === 'all') {
+        return true; // Show all emails
+      }
       if (selectedCategory === 'unassigned') {
         return !email.tags || email.tags.length === 0;
       }
@@ -188,12 +212,11 @@ export default function InboxView() {
   );
 
   // Memoize selected category name lookup
-  const selectedCategoryName = useMemo(() =>
-    selectedCategory === 'unassigned'
-      ? 'Unassigned'
-      : tags.find(t => t.id === selectedCategory)?.name || 'Category',
-    [selectedCategory, tags]
-  );
+  const selectedCategoryName = useMemo(() => {
+    if (selectedCategory === 'all') return 'All Emails';
+    if (selectedCategory === 'unassigned') return 'Unassigned';
+    return tags.find(t => t.id === selectedCategory)?.name || 'Category';
+  }, [selectedCategory, tags]);
 
 
 
@@ -233,7 +256,7 @@ export default function InboxView() {
             
             {/* Refresh Button */}
             <button
-              onClick={fetchData}
+              onClick={stableRefresh}
               disabled={!inboxState.isIdle}
               className="p-2 text-gray-500 hover:text-gray-700 border border-gray-300 rounded-lg disabled:opacity-50"
             >
@@ -248,11 +271,10 @@ export default function InboxView() {
         <ErrorDisplay
           error={errorHandler.error}
           onClear={errorHandler.clearError}
-          onRetry={fetchData}
+          onRetry={stableRefresh}
         />
       )}
 
-      {/* Classification Progress */}
       <ClassificationProgress onComplete={stableRefresh} />
 
       {/* Bulk Actions Toolbar */}
@@ -312,6 +334,7 @@ export default function InboxView() {
             getSenderName={getSenderName}
             selectedEmail={selectedEmail}
             onEmailSelect={setSelectedEmail}
+            itemsPerPage={25}
           />
         </div>
       </div>

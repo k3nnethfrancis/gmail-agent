@@ -247,7 +247,7 @@ export default function ChatInterface({ className = '' }: ChatInterfaceProps) {
   };
 
   return (
-    <div className={`relative bg-white overflow-hidden ${className}`} style={{ height: '100vh' }}>
+    <div className={`relative bg-white overflow-hidden h-full flex flex-col ${className}`}>
       {/* Floating Refresh Button */}
       <button
         onClick={refreshChat}
@@ -257,9 +257,8 @@ export default function ChatInterface({ className = '' }: ChatInterfaceProps) {
         <RotateCcw className="w-4 h-4 text-gray-600" />
       </button>
 
-      {/* Messages Area - Fixed height with internal scrolling */}
-      <div className="flex flex-col" style={{ height: '100vh' }}>
-        <div className="flex-1 overflow-y-auto p-4 pb-32 pt-16 space-y-4" style={{ maxHeight: 'calc(100vh - 200px)' }}>
+      {/* Messages Area - Flexible height using flexbox */}
+      <div className="flex-1 overflow-y-auto p-4 pt-16 space-y-4" style={{ paddingBottom: '120px' }}>
         {messages.map((message, index) => (
           <div
             key={index}
@@ -331,10 +330,12 @@ export default function ChatInterface({ className = '' }: ChatInterfaceProps) {
         
         {/* Scroll anchor */}
         <div ref={messagesEndRef} />
-        </div>
+      </div>
 
-        {/* Floating Input Area */}
-        <div className="absolute bottom-4 left-4 right-4 bg-white border border-gray-300 rounded-xl shadow-lg p-4">
+      {/* Fixed Input Area at Bottom */}
+      <div className="flex-shrink-0 p-4 border-t border-gray-200 bg-white">
+        <div className="max-w-4xl mx-auto">
+          <div className="bg-white border border-gray-300 rounded-xl shadow-sm p-4">
           <div className="flex space-x-3">
             <textarea
               value={input}
@@ -360,11 +361,12 @@ export default function ChatInterface({ className = '' }: ChatInterfaceProps) {
             </button>
           </div>
           
-          {messages.length === 0 && (
-            <div className="mt-2 text-xs text-gray-500">
-              <p>Try: "What meetings do I have today?" or "Classify my emails"</p>
-            </div>
-          )}
+            {messages.length === 0 && (
+              <div className="mt-2 text-xs text-gray-500">
+                <p>Try: "What meetings do I have today?" or "Classify my emails"</p>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>

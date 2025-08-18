@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import AuthGuard from '@/components/AuthGuard';
 import ChatInterface from '@/components/ChatInterface';
 import Shell from '@/components/Shell';
@@ -15,6 +15,22 @@ type View = 'chat' | 'inbox' | 'calendar';
 
 export default function Home() {
   const [activeView, setActiveView] = useState<View>('chat');
+  const [isDesktop, setIsDesktop] = useState<boolean>(false);
+
+  // Render only one layout tree (desktop OR mobile) to avoid double-mounting
+  useEffect(() => {
+    const query = window.matchMedia('(min-width: 768px)');
+    const update = () => setIsDesktop(query.matches);
+    update();
+    try {
+      query.addEventListener('change', update);
+      return () => query.removeEventListener('change', update);
+    } catch {
+      // Safari fallback
+      query.addListener(update);
+      return () => query.removeListener(update);
+    }
+  }, []);
 
   const renderContent = () => {
     switch (activeView) {
@@ -31,32 +47,28 @@ export default function Home() {
   return (
     <AuthGuard>
       <CalendarRefreshProvider>
-        <div className="h-screen flex flex-col">
-          {/* Desktop Layout */}
-          <div className="hidden md:flex flex-1">
-            <Shell
-              leftRail={<LeftRail activeView={activeView} onViewChange={setActiveView} />}
-              rightDock={<RightDock onViewChange={setActiveView} />}
-            >
-              {/* Central Content Surface */}
-              {renderContent()}
-            </Shell>
+        {isDesktop ? (
+          <div className="h-screen flex flex-col">
+            <div className="flex-1">
+              <Shell
+                leftRail={<LeftRail activeView={activeView} onViewChange={setActiveView} />}
+                rightDock={<RightDock activeView={activeView} onViewChange={setActiveView} />}
+              >
+                {renderContent()}
+              </Shell>
+            </div>
           </div>
-
-          {/* Mobile Layout */}
-          <div className="md:hidden flex flex-col h-full">
-            {/* Mobile Content */}
+        ) : (
+          <div className="h-screen flex flex-col">
             <div className="flex-1 bg-gray-50">
               {renderContent()}
             </div>
-
-            {/* Mobile Bottom Navigation */}
             <MobileNav 
               activeView={activeView}
               onViewChange={setActiveView}
             />
           </div>
-        </div>
+        )}
       </CalendarRefreshProvider>
     </AuthGuard>
   );

@@ -24,13 +24,18 @@ export default function ClassificationProgress({ onComplete }: ClassificationPro
   const [isVisible, setIsVisible] = useState(false);
   const onCompleteRef = useRef(onComplete);
   
+  // TEMPORARY: Disable all polling to debug infinite loop
+  console.warn('🚫 ClassificationProgress: Component mounted - POLLING DISABLED FOR DEBUGGING');
+  return null; // Temporarily disable this component
+  
   // Keep ref updated with latest callback
   useEffect(() => {
     onCompleteRef.current = onComplete;
   }, [onComplete]);
 
   useEffect(() => {
-    let interval: NodeJS.Timeout;
+    let interval: NodeJS.Timeout | undefined;
+    let hasCompletedOnce = false;
 
     const checkStatus = async () => {
       try {
@@ -43,9 +48,26 @@ export default function ClassificationProgress({ onComplete }: ClassificationPro
           const shouldShow = data.unclassifiedEmails > 0 && data.totalEmails > 0;
           setIsVisible(shouldShow);
 
-          // Call onComplete when finished
-          if (data.unclassifiedEmails === 0 && data.classifiedEmails > 0) {
+          // Call onComplete when finished and stop polling
+          if (data.unclassifiedEmails === 0 && data.classifiedEmails > 0 && !hasCompletedOnce) {
+            hasCompletedOnce = true;
             onCompleteRef.current?.();
+            
+            // Stop polling since classification is complete
+            if (interval) {
+              clearInterval(interval);
+              interval = undefined;
+              console.warn('🛑 ClassificationProgress: Stopped polling - classification complete');
+            }
+            return; // Exit early
+          }
+          
+          // Stop polling if no classification is needed
+          if (data.unclassifiedEmails === 0 && interval) {
+            clearInterval(interval);
+            interval = undefined;
+            console.warn('🛑 ClassificationProgress: Stopped polling - no work needed');
+            return; // Exit early
           }
         }
       } catch (error) {
@@ -53,14 +75,24 @@ export default function ClassificationProgress({ onComplete }: ClassificationPro
       }
     };
 
-    // Check immediately
-    checkStatus();
-
-    // Poll every 2 seconds for updates
-    interval = setInterval(checkStatus, 2000);
+    // Check immediately to see if polling is even necessary
+    checkStatus().then(() => {
+      // Only start interval polling if component is still visible and work is needed
+      if (interval === undefined) {
+        // Don't start polling if initial check showed no work needed
+        return;
+      }
+      
+      // Only start polling if there might be classification work to do
+      interval = setInterval(checkStatus, 3000); // Reduced frequency: every 3 seconds
+      console.warn('▶️ ClassificationProgress: Started polling every 3 seconds');
+    });
 
     return () => {
-      if (interval) clearInterval(interval);
+      if (interval) {
+        clearInterval(interval);
+        console.warn('🛑 ClassificationProgress: Cleanup - stopped polling');
+      }
     };
   }, []); // Remove onComplete dependency to prevent constant recreation
 

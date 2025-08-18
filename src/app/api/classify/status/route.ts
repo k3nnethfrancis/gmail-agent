@@ -6,6 +6,7 @@ import { emailService, tagService } from '@/lib/database';
  * Returns information about classified vs unclassified emails
  */
 export async function GET(request: NextRequest) {
+  
   try {
     // Get all emails
     const allEmails = emailService.getEmails({ limit: 1000 });

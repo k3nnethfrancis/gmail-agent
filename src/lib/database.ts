@@ -429,7 +429,7 @@ export class TagService {
    */
   getEmailTags(emailId: string): Array<TagRecord & { assignedBy: string; confidence?: number; reasoning?: string }> {
     const stmt = this.db.prepare(`
-      SELECT t.*, et.assigned_by, et.confidence, et.reasoning
+      SELECT t.*, et.assigned_by as assignedBy, et.confidence, et.reasoning
       FROM tags t
       JOIN email_tags et ON t.id = et.tag_id
       WHERE et.email_id = ?

@@ -11,8 +11,8 @@ import { EmailThread, TagRecord } from '../../hooks/useEmailActions';
 interface CategorySidebarProps {
   emails: EmailThread[];
   tags: TagRecord[];
-  selectedCategory: number | 'unassigned';
-  onCategorySelect: (categoryId: number | 'unassigned') => void;
+  selectedCategory: number | 'unassigned' | 'all';
+  onCategorySelect: (categoryId: number | 'unassigned' | 'all') => void;
   onCreateCategory: (emailId: string, categoryName: string) => Promise<void>;
 }
 
@@ -48,6 +48,29 @@ export default function CategorySidebar({
         </div>
         
         <div className="space-y-2">
+          {/* All Emails Category */}
+          <button
+            onClick={() => onCategorySelect('all')}
+            className={`w-full text-left p-3 rounded-lg transition-colors ${
+              selectedCategory === 'all' 
+                ? 'bg-blue-50 text-blue-700 border border-blue-200' 
+                : 'text-gray-700 hover:bg-gray-100'
+            }`}
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <div className="w-4 h-4 rounded-full bg-gray-500" />
+                <div>
+                  <p className="font-medium">All Emails</p>
+                  <p className="text-xs text-gray-600">View all emails</p>
+                </div>
+              </div>
+              <span className="text-sm font-medium">
+                {emails.length}
+              </span>
+            </div>
+          </button>
+
           {/* Unassigned Category - Only show if there are unassigned emails */}
           {unassignedCount > 0 && (
             <button
@@ -93,14 +116,9 @@ export default function CategorySidebar({
                     className="w-4 h-4 rounded-full"
                     style={{ backgroundColor: tag.color }}
                   />
-                  <div>
-                    <p className="font-medium">{tag.name}</p>
-                    {tag.description && (
-                      <p className="text-xs text-gray-600">{tag.description}</p>
-                    )}
-                  </div>
+                  <span className="font-medium">{tag.name}</span>
                 </div>
-                <span className="text-sm font-medium">{tag.emailCount}</span>
+                <span className="text-sm font-medium">({tag.emailCount})</span>
               </div>
             </button>
           ))}

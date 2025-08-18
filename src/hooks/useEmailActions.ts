@@ -88,7 +88,20 @@ export function useEmailActions({
     if (!categoryName.trim()) return;
 
     try {
-      const email = emails.find(e => e.id === emailId);
+      // Fetch fresh data instead of relying on potentially stale props
+      const [emailsResponse, tagsResponse] = await Promise.all([
+        fetch('/api/emails?limit=200'),
+        fetch('/api/tags?includeStats=true')
+      ]);
+      
+      if (!emailsResponse.ok || !tagsResponse.ok) {
+        throw new Error('Failed to fetch current data');
+      }
+      
+      const { emails: currentEmails } = await emailsResponse.json();
+      const { tags: currentTags } = await tagsResponse.json();
+      
+      const email = currentEmails.find((e: EmailThread) => e.id === emailId);
       if (!email) return;
 
       // If replacing existing tags, remove all current tags first
@@ -111,7 +124,7 @@ export function useEmailActions({
       }
 
       // Check if category exists
-      const existingTag = tags.find(tag => 
+      const existingTag = currentTags.find((tag: TagRecord) => 
         tag.name.toLowerCase() === categoryName.trim().toLowerCase()
       );
 
@@ -162,13 +175,21 @@ export function useEmailActions({
       console.error('Error creating/assigning category:', error);
       onError(error instanceof Error ? error.message : 'Failed to assign category');
     }
-  }, [emails, tags, onDataRefresh, onError]);
+  }, [onDataRefresh, onError]);
 
   // Handle toggling training example status
   const handleMarkAsExample = useCallback(async (emailId: string) => {
     console.warn(`🌟 Star button clicked for email: ${emailId}`);
     try {
-      const email = emails.find(e => e.id === emailId);
+      // Fetch fresh email data instead of relying on potentially stale props
+      const emailsResponse = await fetch('/api/emails?limit=200');
+      if (!emailsResponse.ok) {
+        throw new Error('Failed to fetch current emails');
+      }
+      
+      const { emails: currentEmails } = await emailsResponse.json();
+      const email = currentEmails.find((e: EmailThread) => e.id === emailId);
+      
       console.warn(`📧 Email found: ${email?.subject}, Tags: ${email?.tags?.map(t => `${t.name}(${t.assignedBy})`).join(', ')}`);
       
       // Check if email has tags (requirement for training examples)
@@ -215,7 +236,7 @@ export function useEmailActions({
       console.error('Error toggling training example:', error);
       onError(error instanceof Error ? error.message : 'Failed to toggle training example');
     }
-  }, [emails, onDataRefresh, onError]);
+  }, [onDataRefresh, onError]);
 
   // Handle running classification
   const handleRunClassification = useCallback(async () => {
