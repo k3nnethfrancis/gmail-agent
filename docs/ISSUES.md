@@ -226,9 +226,9 @@ const fromAddress = (email.fromAddress || '').toLowerCase();
 ## 🎯 Next Development Session Priority (UI Focus)
 
 Recommended order to continue UI polish:
-1. Issue #8 - Inbox widget cleanup (align categories, accurate unread, click-through)
-2. Issue #2 - Calendar events not loading (auth + scopes verification)
-3. Issue #12 - Tag styling improvements (visual consistency)
+1. Issue #8 - Inbox widget cleanup (align categories, accurate unread, click-through) — Done
+2. Issue #2 - Calendar events not loading (auth + scopes verification) — Done
+3. Issue #12 - Tag styling improvements (visual consistency) — Done
 4. Issue #11 - Inline input positioning polish (editing UX)
 5. New: Compact list view toggle (one-line preview, denser spacing)
 6. New: Email details panel (open thread on the right without full nav change)
