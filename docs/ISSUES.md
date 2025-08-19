@@ -38,6 +38,11 @@ For the current local single-user demo, prioritize UI improvements and simple co
   - Branch: `feature/sidebar-truncation-tooltips`
   - Files: `src/components/email/CategorySidebar.tsx`
   - Notes: Truncate with tooltip, tabular-nums for counts, maintain accessibility
+- Clean email previews (overflow/truncation noise)
+  - Status: In Progress
+  - Branch: `feature/clean-previews`
+  - Files: `src/components/email/EmailList.tsx`
+  - Notes: Limit subject width, improve clamp, strip noisy "Preview" text, normalize whitespace
 - Email count display consistency (Issue #10)
 - Bulk selection and reclassify selected (Issue #5)
 - Inline category editing on tag click (Issue #6)

@@ -314,8 +314,8 @@ export default function EmailList({
                       />
                     )}
                   </div>
-                  <p className={`text-sm truncate mt-1 ${email.isUnread ? 'text-gray-900' : 'text-gray-600'}`}>
-                    {email.subject}
+                  <p className={`text-sm mt-0.5 ${email.isUnread ? 'text-gray-900' : 'text-gray-700'}`}>
+                    <span className="truncate inline-block max-w-[48ch] align-top">{email.subject}</span>
                   </p>
                 </div>
                 <div className="text-xs text-gray-500 ml-2 flex-shrink-0">
@@ -323,8 +323,9 @@ export default function EmailList({
                 </div>
               </div>
 
-              <p className="text-sm text-gray-600 line-clamp-2 leading-relaxed">
-                {email.snippet}
+              {/* Cleaner preview: remove noisy words like "Preview"; clamp, normalize whitespace */}
+              <p className="text-sm text-gray-500 leading-relaxed line-clamp-2 break-words">
+                {email.snippet?.replace(/\s+/g, ' ').replace(/Preview:?\s*/i, '')}
               </p>
 
               {/* Tags */}
