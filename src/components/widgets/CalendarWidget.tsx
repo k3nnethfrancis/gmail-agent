@@ -124,39 +124,39 @@ export default function CalendarWidget({ mode, onModeChange }: CalendarWidgetPro
     return (
       <div className="space-y-3">
         <div className="flex items-center justify-between">
-          <span className="text-sm font-medium text-gray-900">
+          <span className="text-sm font-medium text-foreground">
             {todayEvents.length} today
           </span>
-          <Clock className="w-4 h-4 text-gray-400" />
+          <Clock className="w-4 h-4 text-muted-foreground" />
         </div>
 
         <div className="space-y-2">
           {upcomingEvents.length > 0 ? (
             upcomingEvents.map((event) => (
               <div key={event.id} className="flex items-start space-x-2">
-                <div className="w-2 h-2 bg-blue-500 rounded-full mt-1.5" />
+                <div className="w-2 h-2 bg-primary rounded-full mt-1.5" />
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm text-gray-900 truncate">{event.title}</p>
-                  <p className="text-xs text-gray-500">
+                  <p className="text-sm text-foreground truncate">{event.title}</p>
+                  <p className="text-xs text-muted-foreground">
                     {format(event.start, 'MMM d, h:mm a')}
                   </p>
                 </div>
               </div>
             ))
           ) : (
-            <p className="text-sm text-gray-500">No upcoming events</p>
+            <p className="text-sm text-muted-foreground">No upcoming events</p>
           )}
         </div>
 
         {/* Free/busy bar */}
         <div className="mt-3">
-          <div className="flex items-center justify-between text-xs text-gray-500 mb-1">
+          <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
             <span>This week</span>
             <span>{getMeetingHours()}h meetings</span>
           </div>
-          <div className="w-full bg-gray-200 rounded-full h-2">
+          <div className="w-full bg-muted rounded-full h-2">
             <div 
-              className="bg-blue-500 h-2 rounded-full" 
+              className="bg-primary h-2 rounded-full" 
               style={{ width: `${Math.min(getMeetingHours() / 40 * 100, 100)}%` }}
             />
           </div>

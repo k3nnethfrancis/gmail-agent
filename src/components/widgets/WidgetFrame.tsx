@@ -46,24 +46,24 @@ export default function WidgetFrame({
   if (mode === 'focused') {
     return (
       <div className="fixed inset-0 z-50 bg-black bg-opacity-50 flex items-center justify-center p-4">
-        <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl h-full max-h-[90vh] flex flex-col">
+        <div className="bg-card rounded-xl shadow-2xl w-full max-w-4xl h-full max-h-[90vh] flex flex-col border border-border">
           {/* Focused Header */}
-          <div className="flex items-center justify-between p-4 border-b border-gray-200">
+          <div className="flex items-center justify-between p-4 border-b border-border">
             <div className="flex items-center space-x-2">
               {icon}
-              <h2 className="text-lg font-semibold text-gray-900">{title}</h2>
+              <h2 className="text-lg font-semibold text-foreground">{title}</h2>
             </div>
             <div className="flex items-center space-x-2">
               <button
                 onClick={() => onModeChange('expanded')}
-                className="p-1 text-gray-400 hover:text-gray-600 rounded"
+                className="p-1 text-muted-foreground hover:text-foreground rounded"
                 title="Minimize to expanded"
               >
                 <Minimize2 className="w-4 h-4" />
               </button>
               <button
                 onClick={handleCloseClick}
-                className="p-1 text-gray-400 hover:text-gray-600 rounded"
+                className="p-1 text-muted-foreground hover:text-foreground rounded"
                 title="Close"
               >
                 <X className="w-4 h-4" />
@@ -82,22 +82,22 @@ export default function WidgetFrame({
 
   // Peek and Expanded modes - docked widget
   return (
-    <div className={`bg-white rounded-lg border border-gray-200 ${className}`}>
+    <div className={`bg-card rounded-lg border border-border ${className}`}>
       {/* Widget Header */}
-      <div className="flex items-center justify-between p-3 border-b border-gray-100">
+      <div className="flex items-center justify-between p-3 border-b border-border">
         <div 
           className="flex items-center space-x-2 cursor-pointer flex-1"
           onClick={handlePeekClick}
         >
           {icon}
-          <h3 className="font-medium text-gray-900">{title}</h3>
+          <h3 className="font-medium text-foreground">{title}</h3>
         </div>
         
         <div className="flex items-center space-x-1">
           {mode === 'expanded' && (
             <button
               onClick={handleExpandClick}
-              className="p-1 text-gray-400 hover:text-gray-600 rounded"
+              className="p-1 text-muted-foreground hover:text-foreground rounded"
               title="Open in focused mode"
             >
               <Maximize2 className="w-4 h-4" />
@@ -106,7 +106,7 @@ export default function WidgetFrame({
           
           <button
             onClick={handlePeekClick}
-            className="p-1 text-gray-400 hover:text-gray-600 rounded"
+            className="p-1 text-muted-foreground hover:text-foreground rounded"
             title={mode === 'peek' ? 'Expand' : 'Collapse'}
           >
             {mode === 'peek' ? (

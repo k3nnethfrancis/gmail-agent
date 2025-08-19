@@ -50,7 +50,7 @@ export default function TrainingExamplesWidget() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-24">
-        <RefreshCw className="w-5 h-5 animate-spin text-gray-400" />
+        <RefreshCw className="w-5 h-5 animate-spin text-muted-foreground" />
       </div>
     );
   }
@@ -58,10 +58,10 @@ export default function TrainingExamplesWidget() {
   if (error) {
     return (
       <div className="p-3 text-center">
-        <p className="text-red-600 text-sm mb-2">{error}</p>
+        <p className="text-destructive text-sm mb-2">{error}</p>
         <button 
           onClick={fetchTrainingExamples}
-          className="px-2 py-1 bg-blue-500 text-white rounded text-xs hover:bg-blue-600"
+          className="px-2 py-1 bg-primary text-primary-foreground rounded text-xs hover:opacity-90"
         >
           Retry
         </button>
@@ -72,9 +72,9 @@ export default function TrainingExamplesWidget() {
   if (trainingExamples.length === 0) {
     return (
       <div className="text-center py-6">
-        <Star className="w-8 h-8 text-gray-300 mx-auto mb-2" />
-        <p className="text-gray-600 text-sm mb-1">No training examples yet</p>
-        <p className="text-xs text-gray-500">
+        <Star className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
+        <p className="text-muted-foreground text-sm mb-1">No training examples yet</p>
+        <p className="text-xs text-muted-foreground">
           Click ⭐ on categorized emails to create training data
         </p>
       </div>
@@ -85,12 +85,13 @@ export default function TrainingExamplesWidget() {
     <div className="space-y-3">
       {/* Header with toggle */}
       <div className="flex items-center justify-between">
-        <span className="text-sm font-medium text-gray-700">
+        <span className="text-sm font-medium text-foreground">
           {trainingExamples.length} Training Examples
         </span>
         <button
           onClick={() => setShowDetails(!showDetails)}
-          className="flex items-center space-x-1 text-xs text-gray-500 hover:text-gray-700"
+          className="flex items-center space-x-1 text-xs text-muted-foreground hover:text-foreground"
+          title={showDetails ? 'Hide details' : 'Show details'}
         >
           {showDetails ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
         </button>
@@ -99,14 +100,14 @@ export default function TrainingExamplesWidget() {
       {/* Compact scrollable list */}
       <div className="max-h-48 overflow-y-auto space-y-2">
         {trainingExamples.map((example) => (
-          <div key={example.emailId} className="border border-gray-200 rounded p-2">
+          <div key={example.emailId} className="border border-border rounded p-2 bg-background">
             <div className="flex items-start justify-between">
               <div className="flex-1 min-w-0">
-                <h4 className="font-medium text-gray-900 text-sm truncate">
+                <h4 className="font-medium text-foreground text-sm truncate">
                   {example.subject}
                 </h4>
                 {showDetails && (
-                  <p className="text-xs text-gray-600 truncate mt-1">
+                  <p className="text-xs text-muted-foreground truncate mt-1">
                     From: {example.fromAddress}
                   </p>
                 )}
@@ -128,7 +129,7 @@ export default function TrainingExamplesWidget() {
                 </span>
               ))}
               {example.tags.length > 2 && (
-                <span className="text-xs text-gray-500">
+                <span className="text-xs text-muted-foreground">
                   +{example.tags.length - 2} more
                 </span>
               )}
@@ -136,13 +137,6 @@ export default function TrainingExamplesWidget() {
           </div>
         ))}
       </div>
-      
-      <button
-        onClick={fetchTrainingExamples}
-        className="w-full px-2 py-1 bg-gray-50 text-gray-700 rounded text-xs hover:bg-gray-100"
-      >
-        Refresh
-      </button>
     </div>
   );
 }

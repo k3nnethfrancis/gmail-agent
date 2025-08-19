@@ -43,10 +43,10 @@ export default function AuthGuard({ children }: AuthGuardProps) {
 
   if (isAuthenticated === null) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Checking authentication...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-4 text-muted-foreground">Checking authentication...</p>
         </div>
       </div>
     );
@@ -54,23 +54,23 @@ export default function AuthGuard({ children }: AuthGuardProps) {
 
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="max-w-md w-full bg-white p-8 rounded-lg shadow">
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="max-w-md w-full bg-card p-8 rounded-lg border border-border shadow-sm">
           <div className="text-center">
-            <h1 className="text-2xl font-bold text-gray-900 mb-2">
+            <h1 className="text-2xl font-bold text-foreground mb-2">
               Calendar Assistant + Inbox Concierge
             </h1>
-            <p className="text-gray-600 mb-6">
+            <p className="text-muted-foreground mb-6">
               Connect your Google account to get started with AI-powered calendar and email management.
             </p>
             <button
               onClick={handleGoogleLogin}
-              className="w-full bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-medium"
+              className="w-full bg-primary text-primary-foreground px-6 py-3 rounded-lg hover:opacity-90 transition-colors font-medium"
             >
               Connect Google Account
             </button>
-            <p className="mt-4 text-xs text-gray-500">
-              We'll access your calendar and email to provide personalized assistance.
+            <p className="mt-4 text-xs text-muted-foreground">
+              We&apos;ll access your calendar and email to provide personalized assistance.
             </p>
           </div>
         </div>
