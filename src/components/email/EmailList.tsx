@@ -303,14 +303,18 @@ export default function EmailList({
               <div className="flex items-start justify-between">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center space-x-2">
-                    <p className="text-sm font-medium text-gray-900 truncate">
+                    <p className={`text-sm truncate ${email.isUnread ? 'font-semibold text-gray-900' : 'font-medium text-gray-800'}`}>
                       {getSenderName(email)}
                     </p>
                     {email.isUnread && (
-                      <span className="inline-block w-2 h-2 bg-blue-500 rounded-full" />
+                      <span
+                        className="inline-block w-2 h-2 bg-blue-600 rounded-full"
+                        aria-label="Unread"
+                        title="Unread"
+                      />
                     )}
                   </div>
-                  <p className="text-sm text-gray-600 truncate mt-1">
+                  <p className={`text-sm truncate mt-1 ${email.isUnread ? 'text-gray-900' : 'text-gray-600'}`}>
                     {email.subject}
                   </p>
                 </div>
