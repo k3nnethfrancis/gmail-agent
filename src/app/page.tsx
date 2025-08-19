@@ -49,7 +49,7 @@ export default function Home() {
       <CalendarRefreshProvider>
         {isDesktop ? (
           <div className="h-screen flex flex-col">
-            <div className="flex-1">
+            <div className="flex-1 min-h-0">
               <Shell
                 leftRail={<LeftRail activeView={activeView} onViewChange={setActiveView} />}
                 rightDock={<RightDock activeView={activeView} onViewChange={setActiveView} />}

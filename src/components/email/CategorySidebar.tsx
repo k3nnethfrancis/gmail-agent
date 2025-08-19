@@ -1,3 +1,4 @@
+'use client';
 /**
  * Category Sidebar Component
  * 
@@ -5,6 +6,7 @@
  * Extracted from InboxView to improve component modularity.
  */
 
+import { useState } from 'react';
 import { Plus } from 'lucide-react';
 import { EmailThread, TagRecord } from '../../hooks/useEmailActions';
 
@@ -14,6 +16,7 @@ interface CategorySidebarProps {
   selectedCategory: number | 'unassigned' | 'all';
   onCategorySelect: (categoryId: number | 'unassigned' | 'all') => void;
   onCreateCategory: (emailId: string, categoryName: string) => Promise<void>;
+  counts?: { total: number; unread: number; important: number; unassigned: number };
 }
 
 export default function CategorySidebar({
@@ -21,8 +24,11 @@ export default function CategorySidebar({
   tags,
   selectedCategory,
   onCategorySelect,
-  onCreateCategory
+  onCreateCategory,
+  counts
 }: CategorySidebarProps) {
+  const [showAll, setShowAll] = useState(false);
+  const maxVisibleCategories = 8;
   const handleCreateNewCategory = () => {
     const categoryName = prompt('Enter new category name:');
     if (categoryName && categoryName.trim()) {
@@ -31,30 +37,41 @@ export default function CategorySidebar({
     }
   };
 
-  const unassignedCount = emails.filter(email => !email.tags || email.tags.length === 0).length;
+  const unassignedCount = counts?.unassigned ?? emails.filter(email => !email.tags || email.tags.length === 0).length;
+
+  // Sort once for stable rendering
+  const sortedTags = [...tags]
+    .filter(tag => tag.emailCount > 0)
+    .sort((a, b) => b.emailCount - a.emailCount);
+
+  const visibleTags = showAll ? sortedTags : sortedTags.slice(0, maxVisibleCategories);
 
   return (
-    <div className="w-64 border-r border-gray-200 bg-gray-50">
-      <div className="p-4">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-medium text-gray-900">Categories</h2>
+    <div className="w-64 border-r border-border bg-muted flex flex-col">
+      {/* Sticky header */}
+      <div className="p-4 border-b border-border sticky top-0 z-10 bg-muted/95 backdrop-blur supports-[backdrop-filter]:bg-muted/75">
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-medium text-foreground">Categories</h2>
           <button
             onClick={handleCreateNewCategory}
-            className="p-1 text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded"
+            className="p-1 text-primary hover:bg-primary/10 rounded"
             title="Create new category"
           >
             <Plus className="w-4 h-4" />
           </button>
         </div>
-        
+      </div>
+
+      {/* When collapsed: no scroll; when expanded: scroll */}
+      <div className={`${showAll ? 'flex-1 overflow-y-auto' : ''} p-4 pr-3`}>
         <div className="space-y-2">
           {/* All Emails Category */}
           <button
             onClick={() => onCategorySelect('all')}
             className={`w-full text-left p-3 rounded-lg transition-colors ${
               selectedCategory === 'all' 
-                ? 'bg-blue-50 text-blue-700 border border-blue-200' 
-                : 'text-gray-700 hover:bg-gray-100'
+                ? 'bg-primary/10 text-primary border border-primary/20' 
+                : 'text-foreground hover:bg-muted'
             }`}
           >
             <div className="flex items-center justify-between">
@@ -62,11 +79,11 @@ export default function CategorySidebar({
                 <div className="w-4 h-4 rounded-full bg-gray-500" />
                 <div>
                   <p className="font-medium">All Emails</p>
-                  <p className="text-xs text-gray-600">View all emails</p>
+                  <p className="text-xs text-muted-foreground">View all emails</p>
                 </div>
               </div>
-              <span className="text-sm font-medium">
-                {emails.length}
+              <span className="text-sm font-medium tabular-nums" aria-label={`${counts?.total ?? emails.length} emails`}>
+                {counts?.total ?? emails.length}
               </span>
             </div>
           </button>
@@ -77,8 +94,8 @@ export default function CategorySidebar({
               onClick={() => onCategorySelect('unassigned')}
               className={`w-full text-left p-3 rounded-lg transition-colors ${
                 selectedCategory === 'unassigned' 
-                  ? 'bg-blue-50 text-blue-700 border border-blue-200' 
-                  : 'text-gray-700 hover:bg-gray-100'
+                  ? 'bg-primary/10 text-primary border border-primary/20' 
+                  : 'text-foreground hover:bg-muted'
               }`}
             >
               <div className="flex items-center justify-between">
@@ -86,7 +103,7 @@ export default function CategorySidebar({
                   <div className="w-4 h-4 rounded-full bg-gray-400" />
                   <div>
                     <p className="font-medium">Unassigned</p>
-                    <p className="text-xs text-gray-600">Needs categorization</p>
+                    <p className="text-xs text-muted-foreground">Needs categorization</p>
                   </div>
                 </div>
                 <span className="text-sm font-medium">
@@ -97,18 +114,16 @@ export default function CategorySidebar({
           )}
 
           {/* User Categories */}
-          {tags
-            .filter(tag => tag.emailCount > 0) // Hide empty categories
-            .sort((a, b) => b.emailCount - a.emailCount) // Sort by email count (most to least)
-            .map((tag) => (
+          {visibleTags.map((tag) => (
             <button
               key={tag.id}
               onClick={() => onCategorySelect(tag.id)}
               className={`w-full text-left p-3 rounded-lg transition-colors ${
                 selectedCategory === tag.id
-                  ? 'bg-blue-50 text-blue-700 border border-blue-200'
-                  : 'text-gray-700 hover:bg-gray-100'
+                  ? 'bg-primary/10 text-primary border border-primary/20'
+                  : 'text-foreground hover:bg-muted'
               }`}
+              title={tag.name}
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-3">
@@ -116,23 +131,24 @@ export default function CategorySidebar({
                     className="w-4 h-4 rounded-full"
                     style={{ backgroundColor: tag.color }}
                   />
-                  <span className="font-medium">{tag.name}</span>
+                  <span className="font-medium truncate max-w-[9rem]" title={tag.name}>{tag.name}</span>
                 </div>
-                <span className="text-sm font-medium">({tag.emailCount})</span>
+                <span className="text-sm font-medium tabular-nums" aria-label={`${tag.emailCount} emails`}>
+                  {tag.emailCount}
+                </span>
               </div>
             </button>
           ))}
-        </div>
-        
-        {/* Help Text */}
-        <div className="mt-6 p-3 bg-blue-50 rounded-lg text-xs text-blue-700">
-          <p className="font-medium mb-2">How to use:</p>
-          <ul className="space-y-1">
-            <li>• Hover over emails to see actions</li>
-            <li>• Click 🏷️ to change category (type to create new)</li>
-            <li>• Click ⭐ to mark as training example</li>
-            <li>• Use "Run Classification" to auto-categorize</li>
-          </ul>
+
+          {/* Show more / less */}
+          {sortedTags.length > maxVisibleCategories && (
+            <button
+              onClick={() => setShowAll(v => !v)}
+              className="w-full mt-2 text-sm text-primary hover:opacity-90"
+            >
+              {showAll ? 'Show less' : `Show more (${sortedTags.length - maxVisibleCategories})`}
+            </button>
+          )}
         </div>
       </div>
     </div>

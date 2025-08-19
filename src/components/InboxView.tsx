@@ -3,7 +3,8 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { 
   RefreshCw,
-  Star
+  Star,
+  CircleHelp
 } from 'lucide-react';
 
 // Import extracted components and hooks
@@ -21,6 +22,7 @@ export default function InboxView() {
   const [emails, setEmails] = useState<EmailThread[]>([]);
   const [tags, setTags] = useState<TagRecord[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<number | 'unassigned' | 'all'>('all');
+  const [counts, setCounts] = useState<{ total: number; unread: number; important: number; unassigned: number } | null>(null);
   const [selectedEmail, setSelectedEmail] = useState<EmailThread | null>(null);
 
   // Initialize unified state management and error handling
@@ -48,6 +50,7 @@ export default function InboxView() {
 
         setEmails(emailsData.emails || []);
         setTags(tagsData.tags || []);
+        setCounts(emailsData.counts || null);
         
         return { emails: emailsData.emails, tags: tagsData.tags };
       },
@@ -75,6 +78,7 @@ export default function InboxView() {
         const tagsData = await tagsResponse.json();
         setEmails(emailsData.emails || []);
         setTags(tagsData.tags || []);
+        setCounts(emailsData.counts || null);
       }
     } catch (error) {
       console.error('Refresh failed:', error);
@@ -159,6 +163,7 @@ export default function InboxView() {
                         const tagsData = await tagsResponse.json();
                         setEmails(emailsData.emails || []);
                         setTags(tagsData.tags || []);
+                        setCounts(emailsData.counts || null);
                       }
                     } catch (error) {
                       console.error('Failed to refresh after classification:', error);
@@ -222,29 +227,69 @@ export default function InboxView() {
 
   if (inboxState.isLoading) {
     return (
-      <div className="h-full flex items-center justify-center">
-        <div className="text-center">
-          <RefreshCw className="w-8 h-8 animate-spin mx-auto mb-4 text-gray-400" />
-          <p className="text-gray-600">Loading inbox...</p>
+      <div className="h-full flex bg-card">
+        {/* Sidebar skeleton */}
+        <div className="w-64 border-r border-border bg-muted p-4 hidden sm:block">
+          <div className="h-5 w-28 bg-border rounded mb-4 animate-pulse" />
+          {[...Array(5)].map((_, i) => (
+            <div key={i} className="flex items-center justify-between p-3 rounded-lg mb-2 bg-card animate-pulse">
+              <div className="flex items-center space-x-3">
+                <div className="w-4 h-4 rounded-full bg-border" />
+                <div className="h-4 w-36 bg-border rounded" />
+              </div>
+              <div className="h-4 w-6 bg-border rounded" />
+            </div>
+          ))}
+        </div>
+        {/* List skeleton */}
+        <div className="flex-1 p-6 space-y-4 bg-card">
+          <div className="h-6 w-48 bg-border rounded animate-pulse" />
+          {[...Array(8)].map((_, i) => (
+            <div key={i} className="border border-border rounded p-4 space-y-2 animate-pulse">
+              <div className="h-4 w-64 bg-border rounded" />
+              <div className="h-3 w-full bg-muted rounded" />
+              <div className="h-3 w-5/6 bg-muted rounded" />
+            </div>
+          ))}
         </div>
       </div>
     );
   }
 
   return (
-    <div className="h-full flex flex-col bg-white">
+    <div className="h-full flex flex-col bg-card">
       {/* Header */}
-      <div className="border-b border-gray-200 p-4">
+      <div className="border-b border-border p-4">
         <div className="flex items-center justify-between">
-          <h1 className="text-xl font-semibold text-gray-900">
-            Inbox
-          </h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-xl font-semibold text-foreground">Inbox</h1>
+            {/* Help tooltip */}
+            <div className="relative group">
+              <button
+                aria-label="How to use Inbox"
+                className="p-1 text-muted-foreground hover:text-foreground rounded"
+              >
+                <CircleHelp className="w-4 h-4" />
+              </button>
+              <div
+                role="tooltip"
+                className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-2 w-80 rounded-md border border-border bg-card p-3 text-xs text-foreground shadow-lg opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity z-20"
+              >
+                <p className="font-medium mb-1">How to use</p>
+                <ul className="list-disc ps-4 space-y-1 text-muted-foreground">
+                  <li>Hover over an email to tag or star as a training example</li>
+                  <li>Click 🏷️ to change category; type to create a new one</li>
+                  <li>Use “Run Classification” to auto-categorize unassigned emails</li>
+                </ul>
+              </div>
+            </div>
+          </div>
           <div className="flex items-center space-x-3">
             {/* Run Classification Button */}
             <button
               onClick={emailActions.handleRunClassification}
               disabled={inboxState.isClassifying || !inboxState.canStartClassification}
-              className="flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {inboxState.isClassifying ? (
                 <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
@@ -258,7 +303,7 @@ export default function InboxView() {
             <button
               onClick={stableRefresh}
               disabled={!inboxState.isIdle}
-              className="p-2 text-gray-500 hover:text-gray-700 border border-gray-300 rounded-lg disabled:opacity-50"
+              className="p-2 text-muted-foreground hover:text-foreground border border-border rounded-lg disabled:opacity-50"
             >
               <RefreshCw className="w-5 h-5" />
             </button>
@@ -285,7 +330,7 @@ export default function InboxView() {
         onBulkReclassify={emailActions.handleBulkReclassify}
       />
 
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 min-h-0 flex overflow-hidden">
         {/* Categories Sidebar */}
         <CategorySidebar
           emails={emails}
@@ -293,14 +338,15 @@ export default function InboxView() {
           selectedCategory={selectedCategory}
           onCategorySelect={setSelectedCategory}
           onCreateCategory={emailActions.handleCreateAndAssignCategory}
+          counts={counts ?? undefined}
         />
 
         {/* Email List */}
-        <div className="flex-1 flex flex-col">
-          <div className="px-6 py-4 border-b border-gray-200">
+        <div className="flex-1 min-h-0 flex flex-col">
+          <div className="px-6 py-4 border-b border-border">
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-medium text-gray-900">
-                {selectedCategoryName} ({filteredEmails.length})
+              <h2 className="text-lg font-medium text-foreground">
+                {selectedCategoryName} ({selectedCategory === 'all' ? (counts?.total ?? filteredEmails.length) : filteredEmails.length})
               </h2>
               
               {/* Bulk Selection Controls */}
@@ -309,14 +355,14 @@ export default function InboxView() {
                   <button
                     onClick={() => emailActions.selectAllEmails(filteredEmails)}
                     disabled={emailActions.selectedEmails.size === filteredEmails.length}
-                    className="text-sm text-blue-600 hover:text-blue-800 disabled:text-gray-400 disabled:cursor-not-allowed"
+                    className="text-sm text-primary hover:opacity-90 disabled:text-muted-foreground disabled:cursor-not-allowed"
                   >
                     Select all
                   </button>
                   {emailActions.selectedEmails.size > 0 && (
                     <button
                       onClick={emailActions.clearSelection}
-                      className="text-sm text-gray-600 hover:text-gray-800"
+                      className="text-sm text-muted-foreground hover:text-foreground"
                     >
                       Select none
                     </button>

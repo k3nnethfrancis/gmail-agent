@@ -196,48 +196,48 @@ export default function CalendarView() {
   }
 
   return (
-    <div className="h-full flex flex-col bg-white">
+    <div className="h-full flex flex-col bg-card">
       {/* Header */}
-      <div className="border-b border-gray-200 p-4">
+      <div className="border-b border-border p-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
-            <h1 className="text-xl font-semibold text-gray-900">Calendar</h1>
+            <h1 className="text-xl font-semibold text-foreground">Calendar</h1>
             <div className="flex items-center space-x-2">
               <button
                 onClick={navigatePrevious}
-                className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded"
+                className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded"
               >
                 <ChevronLeft className="w-5 h-5" />
               </button>
               <button
                 onClick={goToToday}
-                className="px-3 py-1 text-sm text-blue-600 hover:bg-blue-50 rounded border border-blue-200"
+                className="px-3 py-1 text-sm text-primary hover:bg-primary/10 rounded border border-primary/20"
               >
                 Today
               </button>
               <button
                 onClick={navigateNext}
-                className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded"
+                className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded"
               >
                 <ChevronRight className="w-5 h-5" />
               </button>
             </div>
-            <h2 className="text-lg font-medium text-gray-900">
+            <h2 className="text-lg font-medium text-foreground">
               {formatDisplayDate()}
             </h2>
           </div>
 
           <div className="flex items-center space-x-3">
             {/* View Mode Selector */}
-            <div className="flex border border-gray-300 rounded-lg">
+            <div className="flex border border-border rounded-lg">
               {(['month', 'week', 'day'] as const).map((mode) => (
                 <button
                   key={mode}
                   onClick={() => setViewMode(mode)}
                   className={`px-3 py-1 text-sm capitalize ${
                     viewMode === mode
-                      ? 'bg-blue-600 text-white'
-                      : 'text-gray-700 hover:bg-gray-50'
+                      ? 'bg-primary text-primary-foreground'
+                      : 'text-foreground hover:bg-muted'
                   } ${mode === 'month' ? 'rounded-l-lg' : mode === 'day' ? 'rounded-r-lg' : ''}`}
                 >
                   {mode}
@@ -247,7 +247,7 @@ export default function CalendarView() {
 
             <button
               onClick={fetchEvents}
-              className="p-2 text-gray-500 hover:text-gray-700 border border-gray-300 rounded-lg"
+              className="p-2 text-muted-foreground hover:text-foreground border border-border rounded-lg"
             >
               <RefreshCw className="w-5 h-5" />
             </button>
@@ -257,7 +257,7 @@ export default function CalendarView() {
                 // This would open a create event modal
                 console.log('Create new event');
               }}
-              className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              className="flex items-center px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:opacity-90"
             >
               <Plus className="w-4 h-4 mr-2" />
               New Event
@@ -275,8 +275,8 @@ export default function CalendarView() {
 
       {error && (
         <div className="mx-4 mb-4">
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-center">
-            <p className="text-red-700">{error}</p>
+          <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-4 flex items-center">
+            <p className="text-destructive">{error}</p>
           </div>
         </div>
       )}
@@ -307,16 +307,16 @@ function MonthView({ currentDate, events }: { currentDate: Date, events: Calenda
   return (
     <div className="h-full flex flex-col">
       {/* Days of week header */}
-      <div className="grid grid-cols-7 gap-px bg-gray-200 mb-1">
+      <div className="grid grid-cols-7 gap-px bg-border mb-1">
         {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-          <div key={day} className="bg-gray-50 p-2 text-center text-sm font-medium text-gray-700">
+          <div key={day} className="bg-muted p-2 text-center text-sm font-medium text-muted-foreground">
             {day}
           </div>
         ))}
       </div>
 
       {/* Calendar grid */}
-      <div className="flex-1 grid grid-cols-7 gap-px bg-gray-200">
+      <div className="flex-1 grid grid-cols-7 gap-px bg-border">
         {days.map(day => {
           const dayEvents = events.filter(event => {
             const eventDate = new Date(event.start.dateTime || event.start.date || '');
@@ -329,10 +329,10 @@ function MonthView({ currentDate, events }: { currentDate: Date, events: Calenda
           return (
             <div
               key={day.toDateString()}
-              className={`bg-white p-2 min-h-[120px] ${!isCurrentMonth ? 'text-gray-400' : ''}`}
+              className={`bg-card p-2 min-h-[120px] ${!isCurrentMonth ? 'text-muted-foreground' : ''}`}
             >
               <div className={`text-sm font-medium mb-1 ${
-                isToday ? 'bg-blue-600 text-white rounded-full w-6 h-6 flex items-center justify-center' : ''
+                isToday ? 'bg-primary text-primary-foreground rounded-full w-6 h-6 flex items-center justify-center' : ''
               }`}>
                 {day.getDate()}
               </div>
@@ -340,14 +340,14 @@ function MonthView({ currentDate, events }: { currentDate: Date, events: Calenda
                 {dayEvents.slice(0, 3).map(event => (
                   <div
                     key={event.id}
-                    className="text-xs p-1 bg-blue-50 text-blue-700 rounded truncate"
+                    className="text-xs p-1 bg-primary/10 text-primary rounded truncate"
                     title={event.summary}
                   >
                     {event.summary}
                   </div>
                 ))}
                 {dayEvents.length > 3 && (
-                  <div className="text-xs text-gray-500">
+                  <div className="text-xs text-muted-foreground">
                     +{dayEvents.length - 3} more
                   </div>
                 )}
@@ -375,7 +375,7 @@ function WeekView({ currentDate, events }: { currentDate: Date, events: Calendar
   return (
     <div className="h-full flex flex-col">
       {/* Week header */}
-      <div className="grid grid-cols-7 gap-px bg-gray-200 mb-4">
+      <div className="grid grid-cols-7 gap-px bg-border mb-4">
         {days.map(day => {
           const dayEvents = events.filter(event => {
             const eventDate = new Date(event.start.dateTime || event.start.date || '');
@@ -383,19 +383,19 @@ function WeekView({ currentDate, events }: { currentDate: Date, events: Calendar
           });
 
           return (
-            <div key={day.toDateString()} className="bg-white p-3">
+            <div key={day.toDateString()} className="bg-card p-3">
               <div className="text-center">
-                <div className="text-sm font-medium text-gray-700">
+                <div className="text-sm font-medium text-muted-foreground">
                   {day.toLocaleDateString('en-US', { weekday: 'short' })}
                 </div>
-                <div className="text-lg font-semibold text-gray-900">
+                <div className="text-lg font-semibold text-foreground">
                   {day.getDate()}
                 </div>
                 <div className="mt-2 space-y-1">
                   {dayEvents.map(event => (
                     <div
                       key={event.id}
-                      className="text-xs p-1 bg-blue-50 text-blue-700 rounded"
+                      className="text-xs p-1 bg-primary/10 text-primary rounded"
                     >
                       {event.summary}
                     </div>
@@ -419,8 +419,8 @@ function DayView({ currentDate, events }: { currentDate: Date, events: CalendarE
 
   return (
     <div className="h-full">
-      <div className="bg-white rounded-lg shadow p-6">
-        <h3 className="text-lg font-medium text-gray-900 mb-4">
+      <div className="bg-card rounded-lg border border-border p-6">
+        <h3 className="text-lg font-medium text-foreground mb-4">
           {currentDate.toLocaleDateString('en-US', { 
             weekday: 'long', 
             year: 'numeric', 
@@ -431,21 +431,21 @@ function DayView({ currentDate, events }: { currentDate: Date, events: CalendarE
         
         {dayEvents.length === 0 ? (
           <div className="text-center py-8">
-            <Calendar className="w-12 h-12 mx-auto mb-4 text-gray-400" />
-            <p className="text-gray-600">No events scheduled for this day</p>
+            <Calendar className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
+            <p className="text-muted-foreground">No events scheduled for this day</p>
           </div>
         ) : (
           <div className="space-y-3">
             {dayEvents.map(event => (
-              <div key={event.id} className="border border-gray-200 rounded-lg p-4">
+              <div key={event.id} className="border border-border rounded-lg p-4">
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
-                    <h4 className="font-medium text-gray-900">{event.summary}</h4>
+                    <h4 className="font-medium text-foreground">{event.summary}</h4>
                     {event.description && (
-                      <p className="text-sm text-gray-600 mt-1">{event.description}</p>
+                      <p className="text-sm text-muted-foreground mt-1">{event.description}</p>
                     )}
                     
-                    <div className="flex items-center space-x-4 mt-2 text-sm text-gray-500">
+                    <div className="flex items-center space-x-4 mt-2 text-sm text-muted-foreground">
                       <div className="flex items-center">
                         <Clock className="w-4 h-4 mr-1" />
                         {event.start.dateTime ? (

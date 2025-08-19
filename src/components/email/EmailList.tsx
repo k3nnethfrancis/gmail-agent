@@ -72,11 +72,11 @@ export default function EmailList({
     return (
       <div className="flex items-center justify-center h-full">
         <div className="text-center">
-          <Mail className="w-12 h-12 mx-auto mb-4 text-gray-400" />
-          <h3 className="text-lg font-medium text-gray-900 mb-2">
+          <Mail className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
+          <h3 className="text-lg font-medium text-foreground mb-2">
             No emails in this category
           </h3>
-          <p className="text-gray-600">
+          <p className="text-muted-foreground">
             {selectedCategory === 'all'
               ? 'No emails found.'
               : selectedCategory === 'unassigned' 
@@ -129,26 +129,26 @@ export default function EmailList({
     };
 
     return (
-      <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200 bg-gray-50">
+      <div className="flex items-center justify-between px-4 py-3 border-t border-border bg-muted">
         <div className="flex-1 flex justify-between sm:hidden">
           <button
             onClick={() => handlePageChange(currentPage - 1)}
             disabled={currentPage === 1}
-            className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="relative inline-flex items-center px-4 py-2 border border-border text-sm font-medium rounded-md text-foreground bg-card hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Previous
           </button>
           <button
             onClick={() => handlePageChange(currentPage + 1)}
             disabled={currentPage === totalPages}
-            className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="ml-3 relative inline-flex items-center px-4 py-2 border border-border text-sm font-medium rounded-md text-foreground bg-card hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Next
           </button>
         </div>
         <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
           <div>
-            <p className="text-sm text-gray-700">
+            <p className="text-sm text-foreground">
               Showing <span className="font-medium">{startIndex + 1}</span> to{' '}
               <span className="font-medium">{Math.min(endIndex, filteredEmails.length)}</span> of{' '}
               <span className="font-medium">{filteredEmails.length}</span> emails
@@ -159,13 +159,13 @@ export default function EmailList({
               <button
                 onClick={() => handlePageChange(currentPage - 1)}
                 disabled={currentPage === 1}
-                className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-border bg-card text-sm font-medium text-muted-foreground hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <ChevronLeft className="h-5 w-5" />
               </button>
               {getPageNumbers().map((page, index) => (
                 page === '...' ? (
-                  <span key={`ellipsis-${index}`} className="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700">
+                  <span key={`ellipsis-${index}`} className="relative inline-flex items-center px-4 py-2 border border-border bg-card text-sm font-medium text-foreground">
                     ...
                   </span>
                 ) : (
@@ -174,8 +174,8 @@ export default function EmailList({
                     onClick={() => handlePageChange(page as number)}
                     className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
                       currentPage === page
-                        ? 'z-10 bg-blue-50 border-blue-500 text-blue-600'
-                        : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
+                        ? 'z-10 bg-primary/10 border-primary text-primary'
+                        : 'bg-card border-border text-muted-foreground hover:bg-muted'
                     }`}
                   >
                     {page}
@@ -185,7 +185,7 @@ export default function EmailList({
               <button
                 onClick={() => handlePageChange(currentPage + 1)}
                 disabled={currentPage === totalPages}
-                className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-border bg-card text-sm font-medium text-muted-foreground hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <ChevronRight className="h-5 w-5" />
               </button>
@@ -197,13 +197,13 @@ export default function EmailList({
   };
 
   return (
-    <div className="flex flex-col h-full">
-      <div className="flex-1 max-h-[65vh] overflow-y-auto divide-y divide-gray-200">
+    <div className="flex flex-col h-full min-h-0">
+      <div className="flex-1 min-h-0 overflow-y-auto divide-y divide-border">
         {paginatedEmails.map((email) => (
         <div
           key={email.id}
-          className={`px-4 py-3 hover:bg-gray-50 transition-colors group relative ${
-            selectedEmails.has(email.id) ? 'bg-blue-50 border-l-4 border-blue-500' : ''
+          className={`px-4 py-3 hover:bg-muted transition-colors group relative ${
+            selectedEmails.has(email.id) ? 'bg-primary/10 border-l-4 border-primary' : ''
           }`}
         >
           <div className="flex items-start space-x-4">
@@ -214,14 +214,14 @@ export default function EmailList({
                 checked={selectedEmails.has(email.id)}
                 onChange={() => toggleEmailSelection(email.id)}
                 onClick={(e) => e.stopPropagation()}
-                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                className="h-4 w-4 text-primary focus:ring-primary border-border rounded"
               />
             </div>
 
             {/* Action Buttons - positioned early in flex layout */}
             <div className="flex items-center space-x-2 flex-shrink-0 mt-0.5">
               {editingEmailCategory === email.id ? (
-                <div className="bg-white border border-gray-300 rounded-lg shadow-lg p-2">
+                <div className="bg-card border border-border rounded-lg shadow-lg p-2">
                   <div className="flex items-center space-x-2">
                     <input
                       type="text"
@@ -236,7 +236,7 @@ export default function EmailList({
                         }
                       }}
                       placeholder="Type category name..."
-                      className="text-xs px-2 py-1 border border-gray-300 rounded w-32"
+                      className="text-xs px-2 py-1 border border-border rounded w-32 bg-background"
                       autoFocus
                     />
                     <button
@@ -265,7 +265,7 @@ export default function EmailList({
                       setEditingEmailCategory(email.id);
                       setNewCategoryInput('');
                     }}
-                    className="text-gray-600 hover:text-blue-700 p-1 rounded-full hover:bg-blue-50"
+                    className="text-muted-foreground hover:text-primary p-1 rounded-full hover:bg-primary/10"
                     title="Change category"
                   >
                     <Tag className="w-4 h-4" />
@@ -275,7 +275,7 @@ export default function EmailList({
                     className={`p-1 rounded-full hover:bg-yellow-50 transition-colors ${
                       email.tags?.some(tag => tag.assignedBy === 'user')
                         ? 'text-yellow-600 bg-yellow-50'
-                        : 'text-gray-600 hover:text-yellow-700'
+                        : 'text-muted-foreground hover:text-yellow-700'
                     }`}
                     title={
                       email.tags?.some(tag => tag.assignedBy === 'user')
@@ -303,24 +303,29 @@ export default function EmailList({
               <div className="flex items-start justify-between">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center space-x-2">
-                    <p className="text-sm font-medium text-gray-900 truncate">
+                    <p className={`text-sm truncate ${email.isUnread ? 'font-semibold text-foreground' : 'font-medium text-foreground'}`}>
                       {getSenderName(email)}
                     </p>
                     {email.isUnread && (
-                      <span className="inline-block w-2 h-2 bg-blue-500 rounded-full" />
+                      <span
+                        className="inline-block w-2 h-2 bg-blue-600 rounded-full"
+                        aria-label="Unread"
+                        title="Unread"
+                      />
                     )}
                   </div>
-                  <p className="text-sm text-gray-600 truncate mt-1">
-                    {email.subject}
+                  <p className={`text-sm mt-0.5 ${email.isUnread ? 'text-foreground' : 'text-muted-foreground'}`}>
+                    <span className="truncate inline-block max-w-[48ch] align-top">{email.subject}</span>
                   </p>
                 </div>
-                <div className="text-xs text-gray-500 ml-2 flex-shrink-0">
+                <div className="text-xs text-muted-foreground ml-2 flex-shrink-0">
                   {formatEmailDate(email.receivedAt)}
                 </div>
               </div>
 
-              <p className="text-sm text-gray-600 line-clamp-2 leading-relaxed">
-                {email.snippet}
+              {/* Cleaner preview: remove noisy words like "Preview"; clamp, normalize whitespace */}
+              <p className="text-sm text-muted-foreground leading-relaxed line-clamp-2 break-words">
+                {email.snippet?.replace(/\s+/g, ' ').replace(/Preview:?\s*/i, '')}
               </p>
 
               {/* Tags */}

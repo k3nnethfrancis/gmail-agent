@@ -15,13 +15,9 @@ export default function LeftRail({ className = '', activeView, onViewChange }: L
   return (
     <div className={`flex flex-col h-full ${className}`}>
       {/* App Header */}
-      <div className="p-4 border-b border-gray-200">
-        <h1 className="text-lg font-semibold text-gray-900">
-          Agent Workspace
-        </h1>
-        <p className="text-sm text-gray-500 mt-1">
-          Calendar + Inbox Concierge
-        </p>
+      <div className="p-4 border-b border-border">
+        <h1 className="text-lg font-semibold text-foreground">Courier</h1>
+        <p className="text-sm text-muted-foreground mt-1">AI-powered calendar and inbox management</p>
       </div>
 
       {/* Navigation */}
@@ -49,19 +45,23 @@ export default function LeftRail({ className = '', activeView, onViewChange }: L
 
       </div>
 
-      {/* Account Switcher */}
-      <div className="p-3 border-t border-gray-200">
-        <div className="flex items-center space-x-2">
-          <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
-            <span className="text-white text-sm font-medium">K</span>
+      {/* System Status + Account */}
+      <div className="p-3 border-t border-border space-y-3">
+        <div>
+          <div className="text-xs font-medium text-muted-foreground mb-2">System Status</div>
+          <div className="space-y-1 text-sm">
+            <div className="flex justify-between"><span className="text-muted-foreground">Uptime</span><span className="font-mono">99.9%</span></div>
+            <div className="flex justify-between"><span className="text-muted-foreground">Active Tasks</span><span className="text-accent font-mono">3</span></div>
+            <div className="flex justify-between"><span className="text-muted-foreground">Unread</span><span className="text-destructive font-mono">3</span></div>
+          </div>
+        </div>
+        <div className="flex items-center space-x-2 pt-2 border-t border-border">
+          <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
+            <span className="text-primary-foreground text-sm font-medium">K</span>
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-gray-900 truncate">
-              Kenneth Francis
-            </p>
-            <p className="text-xs text-gray-500">
-              k3nnethfrancis@gmail.com
-            </p>
+            <p className="text-sm font-medium text-foreground truncate">Kenneth Francis</p>
+            <p className="text-xs text-muted-foreground">k3nnethfrancis@gmail.com</p>
           </div>
         </div>
       </div>
@@ -82,8 +82,8 @@ function NavItem({ icon, label, active = false, onClick }: NavItemProps) {
       onClick={onClick}
       className={`w-full flex items-center space-x-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
         active
-          ? 'bg-blue-50 text-blue-700 border border-blue-200'
-          : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+          ? 'bg-primary/10 text-primary border border-primary/20'
+          : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
       }`}
     >
       {icon}

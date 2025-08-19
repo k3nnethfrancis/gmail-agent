@@ -3,6 +3,8 @@
 **Last Updated**: August 18, 2025  
 **Status**: ✅ **MAJOR FUNCTIONALITY COMPLETE** - Core features implemented, UI polish needed
 
+> Note: This is the canonical issues tracker. `docs/ACTIVE_ISSUES.md` has been consolidated into this document and will no longer be updated.
+
 ## 🎉 Major Implementation Summary
 
 All major functionality has been successfully implemented:
@@ -20,6 +22,61 @@ All major functionality has been successfully implemented:
 **Total Implementation Time**: ~15 hours
 
 ---
+
+## 🚦 Critical Path vs. Later To-Dos (Demo Focus)
+
+For the current local single-user demo, prioritize UI improvements and simple correctness fixes. Defer architecture/agent changes.
+
+### ✅ Critical Path (Do Now)
+- Fix unread inversion in sync (email badges/counts)
+  - Status: Done (merged to dev)
+  - Branch: `feature/fix-unread-flag`
+  - Files: `src/lib/emailSync.ts`
+  - Notes: `isUnread` now true when Gmail includes `UNREAD`
+- Sidebar category truncation and tooltips (Issue #9)
+  - Status: Done (merged to dev)
+  - Branch: `feature/sidebar-truncation-tooltips`
+  - Files: `src/components/email/CategorySidebar.tsx`
+  - Notes: Truncate with tooltip, tabular-nums for counts, maintain accessibility
+- Clean email previews (overflow/truncation noise)
+  - Status: Done (merged to dev)
+  - Branch: `feature/clean-previews`
+  - Files: `src/components/email/EmailList.tsx`
+  - Notes: Limit subject width, improve clamp, strip noisy "Preview" text, normalize whitespace
+- Email count display consistency (Issue #10)
+  - Status: Done (merged to dev)
+  - Branch: `feature/count-consistency`
+  - Files: `src/lib/database.ts`, `src/components/InboxView.tsx`, `src/components/email/CategorySidebar.tsx`
+  - Notes: Use server counts (total/unassigned) for sidebar/header; ensure stability after actions
+- Bulk selection and reclassify selected (Issue #5)
+  - Status: Done
+  - Files: `src/components/email/EmailList.tsx`, `src/components/email/BulkActionToolbar.tsx`, `src/hooks/useEmailActions.ts`
+  - Notes: Checkboxes per row, select-all controls, bulk toolbar with reclassify action
+- Inline category editing on tag click (Issue #6)
+  - Status: Done
+  - Files: `src/components/email/EmailList.tsx`, `src/hooks/useEmailActions.ts`
+  - Notes: Click tag icon to open inline input; create or assign category
+- Add skeleton loaders and standardized error toasts (Inbox/Chat/Calendar)
+  - Status: In Progress
+  - Branch: `feature/skeletons-and-toasts`
+  - Files: `src/components/InboxView.tsx`, `src/components/ErrorDisplay.tsx`
+  - Notes: Add skeletons for sidebar/list; ensure error display is ARIA live region
+  
+  
+### 🧪 Unread UI Indicator (for verification)
+- Status: Done (merged to dev)
+- Branch: `feature/unread-ui-indicator`
+- Files: `src/components/email/EmailList.tsx`
+- Notes: Bold sender + emphasis + dot
+
+### 🕒 Later To-Dos (Post-Demo)
+- Keep agent tools as-is; later align `agentConfig` with `toolRegistry`
+- Centralize auth cookie helper; remove route-local duplicates
+- Unify model versions in one config
+- Add DB row→DTO mapping utility and reduce N+1 in `/api/emails`
+- Replace deprecated Google token refresh method
+- Stop deriving sessionId from token substring; use opaque IDs
+- Plan for multi-user + hosted DB when needed
 
 ## 🟡 UI Polish Issues (User Testing - Latest)
 
@@ -45,7 +102,7 @@ All major functionality has been successfully implemented:
 
 ### Issue #10: Email Count Display Inconsistency
 **Priority**: HIGH  
-**Status**: 🟡 Ready for Implementation  
+**Status**: ✅ Completed  
 
 **Problem**: Email counts not displaying correctly next to categories  
 **Evidence**: Screenshot shows categories but counts aren't clearly visible  
@@ -166,14 +223,15 @@ const fromAddress = (email.fromAddress || '').toLowerCase();
 
 ---
 
-## 🎯 Next Development Session Priority
+## 🎯 Next Development Session Priority (UI Focus)
 
-**Recommended Implementation Order**:
-1. **Issue #7** - Fix auto-classification (highest user impact)
-2. **Issue #6** - Chat state persistence (user experience)  
-3. **Issue #8** - Widget cleanup (polish)
-
-**Total Estimated Time**: 5-8 hours
+Recommended order to continue UI polish:
+1. Issue #8 - Inbox widget cleanup (align categories, accurate unread, click-through) — Done
+2. Issue #2 - Calendar events not loading (auth + scopes verification) — Done
+3. Issue #12 - Tag styling improvements (visual consistency) — Done
+4. Issue #11 - Inline input positioning polish (editing UX)
+5. New: Compact list view toggle (one-line preview, denser spacing)
+6. New: Email details panel (open thread on the right without full nav change)
 
 ---
 
@@ -478,3 +536,30 @@ After implementing all issues:
 - ✅ Inline category editing provides smooth UX
 
 **Estimated Total Implementation Time**: 15-20 hours across 1-2 weeks
+
+---
+
+## New: Lint/TypeScript Follow‑up (UI Branch)
+
+The UI redesign landed under a relaxed build policy to avoid blocking on pre‑existing lint/TS issues in unrelated areas (API routes and legacy components). The UI files in this branch are lint‑clean, with the exception of two informational hook dependency warnings in `CalendarWidget`.
+
+### Action Items
+- Re‑enable strict build checks
+  - Revert temporary settings in `next.config.ts`:
+    - `eslint.ignoreDuringBuilds: false`
+    - `typescript.ignoreBuildErrors: false`
+  - Do this after the below cleanup items are completed.
+
+- Cleanup remaining lint/TS debt (non‑UI scope)
+  - Address `any` types and unused variables across API routes and legacy components.
+  - Escape unescaped quotes in string literals flagged by `react/no-unescaped-entities`.
+  - Resolve hook dependency warnings or add documented exceptions with rationale.
+
+- CalendarWidget note
+  - Two warnings about `useEffect` missing `fetchEvents` dependency are intentionally left for behavior parity. Decide whether to:
+    - Add `fetchEvents` to deps (ensure `useCallback` stability), or
+    - Suppress with a comment and eslint disable line, documenting why.
+
+### Acceptance
+- CI passes with ESLint and TypeScript build checks re‑enabled.
+- No remaining `any` in the touched surfaces; warnings reduced or justified.
