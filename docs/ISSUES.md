@@ -34,6 +34,10 @@ For the current local single-user demo, prioritize UI improvements and simple co
   - Files: `src/lib/emailSync.ts`
   - Notes: Flip `isUnread` to reflect Gmail `UNREAD` label truthfully
 - Sidebar category truncation and tooltips (Issue #9)
+  - Status: In Progress
+  - Branch: `feature/sidebar-truncation-tooltips`
+  - Files: `src/components/email/CategorySidebar.tsx`
+  - Notes: Truncate with tooltip, tabular-nums for counts, maintain accessibility
 - Email count display consistency (Issue #10)
 - Bulk selection and reclassify selected (Issue #5)
 - Inline category editing on tag click (Issue #6)
