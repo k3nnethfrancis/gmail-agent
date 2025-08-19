@@ -108,8 +108,8 @@ function convertGmailMessage(message: GmailMessage): Omit<EmailRecord, 'createdA
   // Convert internal date to ISO string
   const receivedAt = new Date(parseInt(message.internalDate)).toISOString();
   
-  // Check if unread (doesn't have UNREAD label in Gmail)
-  const isUnread = !message.labelIds.includes('UNREAD');
+  // Check if unread (has UNREAD label in Gmail)
+  const isUnread = message.labelIds.includes('UNREAD');
   
   // Check if important
   const isImportant = message.labelIds.includes('IMPORTANT');

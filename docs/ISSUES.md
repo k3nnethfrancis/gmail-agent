@@ -3,6 +3,8 @@
 **Last Updated**: August 18, 2025  
 **Status**: ✅ **MAJOR FUNCTIONALITY COMPLETE** - Core features implemented, UI polish needed
 
+> Note: This is the canonical issues tracker. `docs/ACTIVE_ISSUES.md` has been consolidated into this document and will no longer be updated.
+
 ## 🎉 Major Implementation Summary
 
 All major functionality has been successfully implemented:
@@ -20,6 +22,31 @@ All major functionality has been successfully implemented:
 **Total Implementation Time**: ~15 hours
 
 ---
+
+## 🚦 Critical Path vs. Later To-Dos (Demo Focus)
+
+For the current local single-user demo, prioritize UI improvements and simple correctness fixes. Defer architecture/agent changes.
+
+### ✅ Critical Path (Do Now)
+- Fix unread inversion in sync (email badges/counts)
+  - Status: In Progress
+  - Branch: `feature/fix-unread-flag`
+  - Files: `src/lib/emailSync.ts`
+  - Notes: Flip `isUnread` to reflect Gmail `UNREAD` label truthfully
+- Sidebar category truncation and tooltips (Issue #9)
+- Email count display consistency (Issue #10)
+- Bulk selection and reclassify selected (Issue #5)
+- Inline category editing on tag click (Issue #6)
+- Add skeleton loaders and standardized error toasts (Inbox/Chat/Calendar)
+
+### 🕒 Later To-Dos (Post-Demo)
+- Keep agent tools as-is; later align `agentConfig` with `toolRegistry`
+- Centralize auth cookie helper; remove route-local duplicates
+- Unify model versions in one config
+- Add DB row→DTO mapping utility and reduce N+1 in `/api/emails`
+- Replace deprecated Google token refresh method
+- Stop deriving sessionId from token substring; use opaque IDs
+- Plan for multi-user + hosted DB when needed
 
 ## 🟡 UI Polish Issues (User Testing - Latest)
 
