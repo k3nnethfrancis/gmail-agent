@@ -288,14 +288,9 @@ export default function InboxView() {
             <button
               onClick={emailActions.handleRunClassification}
               disabled={inboxState.isClassifying || !inboxState.canStartClassification}
-              className="flex items-center px-3 py-1.5 bg-red-600 text-white rounded-md hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+              className="px-3 py-1.5 bg-red-600 text-white rounded-md hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
             >
-              {inboxState.isClassifying ? (
-                <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-              ) : (
-                <RefreshCw className="w-4 h-4 mr-2" />
-              )}
-              {inboxState.isClassifying ? 'Reclassifying...' : 'Reclassify All'}
+              {inboxState.isClassifying ? 'Reclassifying…' : 'Reclassify'}
             </button>
             
             {/* Refresh Button */}
