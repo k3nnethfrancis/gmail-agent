@@ -34,22 +34,28 @@ For the current local single-user demo, prioritize UI improvements and simple co
   - Files: `src/lib/emailSync.ts`
   - Notes: Flip `isUnread` to reflect Gmail `UNREAD` label truthfully
 - Sidebar category truncation and tooltips (Issue #9)
-  - Status: In Progress
+  - Status: Done (merged to dev)
   - Branch: `feature/sidebar-truncation-tooltips`
   - Files: `src/components/email/CategorySidebar.tsx`
   - Notes: Truncate with tooltip, tabular-nums for counts, maintain accessibility
 - Clean email previews (overflow/truncation noise)
-  - Status: In Progress
+  - Status: Done (merged to dev)
   - Branch: `feature/clean-previews`
   - Files: `src/components/email/EmailList.tsx`
   - Notes: Limit subject width, improve clamp, strip noisy "Preview" text, normalize whitespace
 - Email count display consistency (Issue #10)
-  - Status: In Progress
+  - Status: Done (merged to dev)
   - Branch: `feature/count-consistency`
   - Files: `src/lib/database.ts`, `src/components/InboxView.tsx`, `src/components/email/CategorySidebar.tsx`
   - Notes: Use server counts (total/unassigned) for sidebar/header; ensure stability after actions
 - Bulk selection and reclassify selected (Issue #5)
+  - Status: Done
+  - Files: `src/components/email/EmailList.tsx`, `src/components/email/BulkActionToolbar.tsx`, `src/hooks/useEmailActions.ts`
+  - Notes: Checkboxes per row, select-all controls, bulk toolbar with reclassify action
 - Inline category editing on tag click (Issue #6)
+  - Status: Done
+  - Files: `src/components/email/EmailList.tsx`, `src/hooks/useEmailActions.ts`
+  - Notes: Click tag icon to open inline input; create or assign category
 - Add skeleton loaders and standardized error toasts (Inbox/Chat/Calendar)
   
   
