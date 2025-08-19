@@ -259,14 +259,30 @@ export function useEmailActions({
         throw new Error('Failed to run classification');
       }
 
-      const result = await response.json();
+      let result = await response.json();
       
-      if (result.success) {
+      if (result.success && (result.classified || 0) > 0) {
         // Refresh data to show new classifications
         await onDataRefresh();
         alert(`Classification complete! ${result.classified || 0} emails classified.`);
       } else {
-        throw new Error(result.message || 'Classification failed');
+        // Optionally prompt to overwrite when nothing new was classified
+        const shouldOverwrite = window.confirm('All emails appear to be classified already. Reclassify all and overwrite existing categories?');
+        if (!shouldOverwrite) {
+          throw new Error(result.message || 'No emails were classified');
+        }
+        const overwriteResponse = await fetch('/api/classify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ force: true, overwriteExisting: true }),
+          credentials: 'include'
+        });
+        if (!overwriteResponse.ok) {
+          throw new Error('Failed to reclassify with overwrite');
+        }
+        result = await overwriteResponse.json();
+        await onDataRefresh();
+        alert(result.message || `Reclassification complete! ${result.classified || 0} emails updated.`);
       }
     } catch (error) {
       console.error('Error running classification:', error);
