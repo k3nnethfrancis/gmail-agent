@@ -226,10 +226,30 @@ export default function InboxView() {
 
   if (inboxState.isLoading) {
     return (
-      <div className="h-full flex items-center justify-center">
-        <div className="text-center">
-          <RefreshCw className="w-8 h-8 animate-spin mx-auto mb-4 text-gray-400" />
-          <p className="text-gray-600">Loading inbox...</p>
+      <div className="h-full flex">
+        {/* Sidebar skeleton */}
+        <div className="w-64 border-r border-gray-200 bg-gray-50 p-4 hidden sm:block">
+          <div className="h-5 w-28 bg-gray-200 rounded mb-4 animate-pulse" />
+          {[...Array(5)].map((_, i) => (
+            <div key={i} className="flex items-center justify-between p-3 rounded-lg mb-2 bg-gray-100 animate-pulse">
+              <div className="flex items-center space-x-3">
+                <div className="w-4 h-4 rounded-full bg-gray-300" />
+                <div className="h-4 w-36 bg-gray-200 rounded" />
+              </div>
+              <div className="h-4 w-6 bg-gray-200 rounded" />
+            </div>
+          ))}
+        </div>
+        {/* List skeleton */}
+        <div className="flex-1 p-6 space-y-4">
+          <div className="h-6 w-48 bg-gray-200 rounded animate-pulse" />
+          {[...Array(8)].map((_, i) => (
+            <div key={i} className="border border-gray-200 rounded p-4 space-y-2 animate-pulse">
+              <div className="h-4 w-64 bg-gray-200 rounded" />
+              <div className="h-3 w-full bg-gray-100 rounded" />
+              <div className="h-3 w-5/6 bg-gray-100 rounded" />
+            </div>
+          ))}
         </div>
       </div>
     );
