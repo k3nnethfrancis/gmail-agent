@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { Send, Loader, RotateCcw } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { useCalendarRefresh } from '@/contexts/CalendarRefreshContext';
@@ -224,12 +224,13 @@ export default function ChatInterface({ className = '' }: ChatInterfaceProps) {
         abortRef.current = null;
       }
 
-    } catch (error: any) {
-      console.error('Streaming chat error:', error);
+    } catch (error: unknown) {
+      const err = error as Error;
+      console.error('Streaming chat error:', err);
       
       const errorMessage: Message = {
         role: 'assistant',
-        content: `Sorry, I encountered an error: ${error.message}. Please make sure you're authenticated with Google.`,
+        content: `Sorry, I encountered an error: ${err.message}. Please make sure you are authenticated with Google.`,
         timestamp: new Date(),
       };
 
@@ -360,7 +361,7 @@ export default function ChatInterface({ className = '' }: ChatInterfaceProps) {
           </div>
           {messages.length === 0 && (
             <div className="mt-2 text-xs text-muted-foreground">
-              <p>Try: "What meetings do I have today?" or "Classify my emails"</p>
+              <p>Try: &quot;What meetings do I have today?&quot; or &quot;Classify my emails&quot;</p>
             </div>
           )}
         </div>

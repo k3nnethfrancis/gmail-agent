@@ -15,7 +15,7 @@ interface CalendarEvent {
   description?: string;
   location?: string;
   attendees?: string[];
-  originalEvent?: any;
+  originalEvent?: Record<string, unknown>;
 }
 
 interface CalendarWidgetProps {
@@ -50,10 +50,20 @@ export default function CalendarWidget({ mode, onModeChange }: CalendarWidgetPro
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
 
-      const data = await response.json();
+      type GoogleEvent = {
+        id: string;
+        summary?: string;
+        start?: { dateTime?: string; date?: string };
+        end?: { dateTime?: string; date?: string };
+        description?: string;
+        location?: string;
+        attendees?: Array<{ email: string }>;
+        [key: string]: unknown;
+      };
+      const data: { success: boolean; events?: GoogleEvent[]; error?: string } = await response.json();
       
       if (data.success && data.events) {
-        const parsedEvents: CalendarEvent[] = data.events.map((event: any) => ({
+        const parsedEvents: CalendarEvent[] = data.events.map((event) => ({
           id: event.id,
           title: event.summary || 'Untitled Event',
           start: new Date(event.start?.dateTime || event.start?.date),
@@ -61,7 +71,7 @@ export default function CalendarWidget({ mode, onModeChange }: CalendarWidgetPro
           allDay: !event.start?.dateTime,
           description: event.description,
           location: event.location,
-          attendees: event.attendees?.map((a: any) => a.email) || [],
+          attendees: Array.isArray(event.attendees) ? event.attendees.map((a: { email: string }) => a.email) : [],
           originalEvent: event
         }));
         
