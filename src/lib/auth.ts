@@ -53,8 +53,8 @@ export function createAuthenticatedClient(tokens: { access_token?: string; refre
 }
 
 // Helper to get tokens from cookies (async to satisfy current Next types)
-export async function getTokensFromCookies() {
-  const cookieStore = await cookies();
+export function getTokensFromCookies() {
+  const cookieStore = cookies();
   return {
     accessToken: cookieStore.get('google_access_token')?.value,
     refreshToken: cookieStore.get('google_refresh_token')?.value,
