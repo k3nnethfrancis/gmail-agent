@@ -38,6 +38,13 @@ For the current local single-user demo, prioritize UI improvements and simple co
 - Bulk selection and reclassify selected (Issue #5)
 - Inline category editing on tag click (Issue #6)
 - Add skeleton loaders and standardized error toasts (Inbox/Chat/Calendar)
+  
+  
+### 🧪 Unread UI Indicator (for verification)
+- Status: In Progress
+- Branch: `feature/unread-ui-indicator`
+- Files: `src/components/email/EmailList.tsx`
+- Notes: Bold sender + darker subject and small dot with aria-label for unread emails to visually verify unread status
 
 ### 🕒 Later To-Dos (Post-Demo)
 - Keep agent tools as-is; later align `agentConfig` with `toolRegistry`
