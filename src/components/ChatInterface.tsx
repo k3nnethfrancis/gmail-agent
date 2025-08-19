@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { Send, Loader, RotateCcw } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { useCalendarRefresh } from '@/contexts/CalendarRefreshContext';
@@ -224,12 +224,13 @@ export default function ChatInterface({ className = '' }: ChatInterfaceProps) {
         abortRef.current = null;
       }
 
-    } catch (error: any) {
-      console.error('Streaming chat error:', error);
+    } catch (error: unknown) {
+      const err = error as Error;
+      console.error('Streaming chat error:', err);
       
       const errorMessage: Message = {
         role: 'assistant',
-        content: `Sorry, I encountered an error: ${error.message}. Please make sure you're authenticated with Google.`,
+        content: `Sorry, I encountered an error: ${err.message}. Please make sure you are authenticated with Google.`,
         timestamp: new Date(),
       };
 
@@ -247,18 +248,18 @@ export default function ChatInterface({ className = '' }: ChatInterfaceProps) {
   };
 
   return (
-    <div className={`relative bg-white overflow-hidden h-full flex flex-col ${className}`}>
+    <div className={`relative bg-background overflow-hidden h-full flex flex-col ${className}`}>
       {/* Floating Refresh Button */}
       <button
         onClick={refreshChat}
-        className="absolute top-4 left-4 z-10 bg-white border border-gray-300 p-2 rounded-lg shadow-sm hover:bg-gray-50 transition-colors"
+        className="absolute top-4 left-4 z-10 bg-card border border-border p-2 rounded-lg shadow-sm hover:bg-muted transition-colors"
         title="Refresh Chat"
       >
-        <RotateCcw className="w-4 h-4 text-gray-600" />
+        <RotateCcw className="w-4 h-4 text-muted-foreground" />
       </button>
 
       {/* Messages Area - Fixed height with internal scrolling */}
-      <div className="flex-1 max-h-[60vh] overflow-y-auto p-4 pt-16 space-y-4" style={{ paddingBottom: '120px' }}>
+      <div className="flex-1 overflow-y-auto p-4 pt-16 space-y-4 pb-40 chat-scroll">
         {messages.map((message, index) => (
           <div
             key={index}
@@ -269,8 +270,8 @@ export default function ChatInterface({ className = '' }: ChatInterfaceProps) {
             <div
               className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
                 message.role === 'user'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-100 text-gray-900'
+                  ? 'bg-primary text-primary-foreground'
+                  : 'bg-muted text-foreground'
               }`}
             >
               {message.role === 'assistant' ? (
@@ -284,12 +285,12 @@ export default function ChatInterface({ className = '' }: ChatInterfaceProps) {
                       strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
                       em: ({ children }) => <em className="italic">{children}</em>,
                       code: ({ children }) => (
-                        <code className="bg-gray-200 px-1 py-0.5 rounded text-xs font-mono">
+                        <code className="bg-muted px-1 py-0.5 rounded text-xs font-mono">
                           {children}
                         </code>
                       ),
                       pre: ({ children }) => (
-                        <pre className="bg-gray-200 p-2 rounded text-xs font-mono overflow-x-auto">
+                        <pre className="bg-muted p-2 rounded text-xs font-mono overflow-x-auto">
                           {children}
                         </pre>
                       ),
@@ -319,7 +320,7 @@ export default function ChatInterface({ className = '' }: ChatInterfaceProps) {
         
         {isLoading && (
           <div className="flex justify-start">
-            <div className="bg-gray-100 text-gray-900 px-4 py-2 rounded-lg">
+            <div className="bg-muted text-foreground px-4 py-2 rounded-lg">
               <div className="flex items-center space-x-2">
                 <Loader className="w-4 h-4 animate-spin" />
                 <p className="text-sm">Thinking...</p>
@@ -332,22 +333,20 @@ export default function ChatInterface({ className = '' }: ChatInterfaceProps) {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Fixed Input Area at Bottom */}
-      <div className="flex-shrink-0 p-4 border-t border-gray-200 bg-white">
-        <div className="max-w-4xl mx-auto">
-          <div className="bg-white border border-gray-300 rounded-xl shadow-sm p-4">
+      {/* Floating Composer */}
+      <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-6 w-full max-w-2xl px-4">
+        <div className="pointer-events-auto bg-card border border-border rounded-xl shadow-md p-3">
           <div className="flex space-x-3">
             <textarea
               value={input}
               onChange={(e) => {
                 setInput(e.target.value);
-                // Auto-resize textarea
                 e.target.style.height = 'auto';
                 e.target.style.height = Math.min(e.target.scrollHeight, 128) + 'px';
               }}
               onKeyDown={handleKeyDown}
               placeholder="Ask about your calendar or emails..."
-              className="flex-1 resize-none border-0 bg-transparent text-sm text-gray-900 placeholder:text-gray-500 focus:outline-none min-h-[40px] max-h-32 py-2"
+              className="flex-1 resize-none border-0 bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none min-h-[40px] max-h-32 py-2"
               rows={1}
               disabled={isLoading}
               style={{ resize: 'none', overflow: 'hidden' }}
@@ -355,18 +354,16 @@ export default function ChatInterface({ className = '' }: ChatInterfaceProps) {
             <button
               onClick={sendMessage}
               disabled={!input.trim() || isLoading}
-              className="bg-blue-600 text-white p-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex-shrink-0 self-end"
+              className="bg-primary text-primary-foreground p-2 rounded-lg hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex-shrink-0 self-end"
             >
               <Send className="w-5 h-5" />
             </button>
           </div>
-          
-            {messages.length === 0 && (
-              <div className="mt-2 text-xs text-gray-500">
-                <p>Try: "What meetings do I have today?" or "Classify my emails"</p>
-              </div>
-            )}
-          </div>
+          {messages.length === 0 && (
+            <div className="mt-2 text-xs text-muted-foreground">
+              <p>Try: &quot;What meetings do I have today?&quot; or &quot;Classify my emails&quot;</p>
+            </div>
+          )}
         </div>
       </div>
     </div>

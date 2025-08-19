@@ -65,34 +65,34 @@ export default function EmailWidget({ className = '', activeView, onViewChange }
 
   if (isLoading) {
     return (
-      <div className={`bg-white rounded-lg shadow p-4 ${className}`}>
+      <div className={`bg-card rounded-lg border border-border p-4 ${className}`}>
         <div className="flex items-center justify-center h-32">
-          <RefreshCw className="w-6 h-6 animate-spin text-gray-400" />
+          <RefreshCw className="w-6 h-6 animate-spin text-muted-foreground" />
         </div>
       </div>
     );
   }
 
   return (
-    <div className={`bg-white rounded-lg shadow ${className}`}>
+    <div className={`bg-card rounded-lg border border-border ${className}`}>
       {/* Widget Header */}
-      <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
+      <div className="px-4 py-3 border-b border-border flex items-center justify-between">
         <div className="flex items-center space-x-2">
           {activeView === 'inbox' ? (
             <>
               <Star className="w-5 h-5 text-yellow-600" />
-              <h3 className="font-medium text-gray-900">Training Examples</h3>
+              <h3 className="font-medium text-foreground">Training Examples</h3>
             </>
           ) : (
             <>
-              <Mail className="w-5 h-5 text-gray-600" />
-              <h3 className="font-medium text-gray-900">Inbox</h3>
+              <Mail className="w-5 h-5 text-muted-foreground" />
+              <h3 className="font-medium text-foreground">Inbox</h3>
             </>
           )}
         </div>
         <button
           onClick={fetchEmailStats}
-          className="p-1 text-gray-500 hover:text-gray-700 rounded"
+          className="p-1 text-muted-foreground hover:text-foreground rounded"
         >
           <RefreshCw className="w-4 h-4" />
         </button>
@@ -114,30 +114,30 @@ export default function EmailWidget({ className = '', activeView, onViewChange }
                 <button
                   key={tag.id}
                   onClick={() => onViewChange?.('inbox')}
-                  className="w-full flex items-center justify-between py-2 px-3 rounded-lg hover:bg-gray-50 transition-colors group"
+                  className="w-full flex items-center justify-between py-2 px-3 rounded-lg hover:bg-muted/50 transition-colors group"
                 >
                   <div className="flex items-center space-x-3">
                     <div
                       className="w-3 h-3 rounded-full"
                       style={{ backgroundColor: tag.color }}
                     />
-                    <span className="text-sm font-medium text-gray-900">{tag.name}</span>
+                    <span className="text-sm font-medium text-foreground">{tag.name}</span>
                   </div>
                   <div className="flex items-center space-x-2">
-                    <span className="text-sm font-medium text-gray-600">
+                    <span className="text-sm font-medium text-muted-foreground">
                       {tag.emailCount}
                     </span>
-                    <ArrowRight className="w-3 h-3 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    <ArrowRight className="w-3 h-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
                   </div>
                 </button>
               ))}
             </div>
 
             {/* View All Button */}
-            <div className="pt-2 border-t border-gray-200">
+            <div className="pt-2 border-t border-border">
               <button
                 onClick={() => onViewChange?.('inbox')}
-                className="w-full bg-gray-50 hover:bg-gray-100 text-gray-700 text-sm font-medium py-2 px-3 rounded-lg transition-colors flex items-center justify-center space-x-2"
+                className="w-full bg-muted/50 hover:bg-muted text-foreground text-sm font-medium py-2 px-3 rounded-lg transition-colors flex items-center justify-center space-x-2"
               >
                 <Mail className="w-4 h-4" />
                 <span>Open Inbox</span>
