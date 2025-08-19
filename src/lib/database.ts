@@ -273,7 +273,7 @@ export class EmailService {
       ${tagId ? 'LEFT JOIN email_tags et ON e.id = et.email_id' : ''}
       WHERE 1=1
     `;
-    const params: any[] = [];
+    const params: (string | number)[] = [];
 
     if (unreadOnly) {
       query += ' AND e.is_unread = 1';
@@ -329,9 +329,9 @@ export class EmailService {
     const importantStmt = this.db.prepare('SELECT COUNT(*) as count FROM emails WHERE is_important = 1');
 
     return {
-      total: (totalStmt.get() as any).count,
-      unread: (unreadStmt.get() as any).count,
-      important: (importantStmt.get() as any).count,
+      total: (totalStmt.get() as { count: number }).count,
+      unread: (unreadStmt.get() as { count: number }).count,
+      important: (importantStmt.get() as { count: number }).count,
     };
   }
 }
@@ -533,7 +533,7 @@ export class ClassificationService {
       LIMIT ?
     `);
 
-    const results = stmt.all(limit) as any[];
+    const results = stmt.all(limit) as Array<Record<string, unknown> & { email: string; tag: string }>;
     return results.map(row => ({
       ...row,
       email: JSON.parse(row.email),
@@ -567,7 +567,7 @@ export class ClassificationService {
       WHERE (et.assigned_by = 'user' OR ch.user_action = 'accepted')
     `;
 
-    const params: any[] = [];
+    const params: (string | number)[] = [];
     if (tagId) {
       query += ' AND t.id = ?';
       params.push(tagId);
@@ -605,7 +605,7 @@ export class ClassificationService {
       FROM classification_history
     `);
 
-    const result = stmt.get() as any;
+    const result = stmt.get() as { total: number; accepted: number; rejected: number; pending: number };
     const reviewed = result.accepted + result.rejected;
     const accuracy = reviewed > 0 ? result.accepted / reviewed : 0;
 

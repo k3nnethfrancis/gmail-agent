@@ -197,8 +197,8 @@ export default function EmailList({
   };
 
   return (
-    <div>
-      <div className="divide-y divide-gray-200">
+    <div className="flex flex-col h-full">
+      <div className="flex-1 max-h-[65vh] overflow-y-auto divide-y divide-gray-200">
         {paginatedEmails.map((email) => (
         <div
           key={email.id}
@@ -303,14 +303,14 @@ export default function EmailList({
               <div className="flex items-start justify-between">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center space-x-2">
-                    <p className="text-sm font-medium text-gray-900 truncate max-w-full overflow-hidden">
+                    <p className="text-sm font-medium text-gray-900 truncate">
                       {getSenderName(email)}
                     </p>
                     {email.isUnread && (
                       <span className="inline-block w-2 h-2 bg-blue-500 rounded-full" />
                     )}
                   </div>
-                  <p className="text-sm text-gray-600 truncate max-w-full overflow-hidden mt-1">
+                  <p className="text-sm text-gray-600 truncate mt-1">
                     {email.subject}
                   </p>
                 </div>
@@ -319,7 +319,7 @@ export default function EmailList({
                 </div>
               </div>
 
-              <p className="text-sm text-gray-600 truncate max-w-full overflow-hidden">
+              <p className="text-sm text-gray-600 line-clamp-2 leading-relaxed">
                 {email.snippet}
               </p>
 

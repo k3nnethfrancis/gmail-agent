@@ -10,6 +10,13 @@ type ContentBlock =
   | { type: 'tool_use'; id: string; name: string; input: unknown }
   | { type: string; [k: string]: unknown };
 
+type ToolResult = {
+  tool_use_id: string;
+  type: 'tool_result';
+  content: string;
+};
+
+
 type ChatBody = {
   message: string;
   conversation?: Array<{ role: 'user' | 'assistant'; content: string }>;
@@ -34,10 +41,11 @@ function validateConversation(conversation: unknown): Array<{ role: 'user' | 'as
   if (!Array.isArray(conversation)) return [];
   return conversation
     .filter((msg): msg is { role: string; content: string } =>
-      typeof msg === 'object' && msg !== null && 'role' in msg && 'content' in msg && typeof (msg as any).content === 'string'
+      typeof msg === 'object' && msg !== null && 'role' in msg && 'content' in msg && 
+      typeof (msg as { content: unknown }).content === 'string'
     )
     .filter((msg): msg is { role: 'user' | 'assistant'; content: string } =>
-      (msg as any).role === 'user' || (msg as any).role === 'assistant'
+      (msg as { role: string }).role === 'user' || (msg as { role: string }).role === 'assistant'
     );
 }
 
@@ -219,8 +227,8 @@ export async function POST(request: NextRequest) {
       
       // Continue the conversation with tool results
       currentMessages.push(
-        { role: 'assistant', content: currentResponse.content as any },
-        { role: 'user', content: toolResults as any }
+        { role: 'assistant', content: currentResponse.content as ContentBlock[] },
+        { role: 'user', content: toolResults as ToolResult[] }
       );
       
       // Small delay between iterations to reduce CPU spikes

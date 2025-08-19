@@ -257,8 +257,8 @@ export default function ChatInterface({ className = '' }: ChatInterfaceProps) {
         <RotateCcw className="w-4 h-4 text-gray-600" />
       </button>
 
-      {/* Messages Area - Flexible height using flexbox */}
-      <div className="flex-1 overflow-y-auto p-4 pt-16 space-y-4" style={{ paddingBottom: '120px' }}>
+      {/* Messages Area - Fixed height with internal scrolling */}
+      <div className="flex-1 max-h-[60vh] overflow-y-auto p-4 pt-16 space-y-4" style={{ paddingBottom: '120px' }}>
         {messages.map((message, index) => (
           <div
             key={index}
