@@ -81,7 +81,7 @@ export default function ErrorDisplay({
   const icon = getErrorIcon(error.type);
 
   return (
-    <div className={className}>
+    <div className={className} role="status" aria-live="polite">
       <div className={`${styles.bg} ${styles.border} border rounded-lg p-4`}>
         <div className="flex items-start">
           <div className={`${styles.icon} mr-3 mt-0.5`}>

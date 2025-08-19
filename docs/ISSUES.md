@@ -57,6 +57,10 @@ For the current local single-user demo, prioritize UI improvements and simple co
   - Files: `src/components/email/EmailList.tsx`, `src/hooks/useEmailActions.ts`
   - Notes: Click tag icon to open inline input; create or assign category
 - Add skeleton loaders and standardized error toasts (Inbox/Chat/Calendar)
+  - Status: In Progress
+  - Branch: `feature/skeletons-and-toasts`
+  - Files: `src/components/InboxView.tsx`, `src/components/ErrorDisplay.tsx`
+  - Notes: Add skeletons for sidebar/list; ensure error display is ARIA live region
   
   
 ### 🧪 Unread UI Indicator (for verification)
