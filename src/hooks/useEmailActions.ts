@@ -238,55 +238,36 @@ export function useEmailActions({
     }
   }, [onDataRefresh, onError]);
 
-  // Handle running classification
+  // Handle reclassify all (overwrite existing categories)
   const handleRunClassification = useCallback(async () => {
     if (!inboxState.canStartClassification) {
-      onError('Cannot start classification while editing or loading');
+      onError('Cannot start reclassification while editing or loading');
       return;
     }
 
+    const confirmText = 'You are about to reclassify ALL emails and overwrite existing categories.\n\nTip: To reclassify only specific emails, select them and use "Reclassify Selected" instead.\n\nProceed to reclassify all?';
+    const confirmed = window.confirm(confirmText);
+    if (!confirmed) return;
+
     try {
       inboxState.setClassifying();
-      
       const response = await fetch('/api/classify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ force: true }),
+        body: JSON.stringify({ force: true, overwriteExisting: true }),
         credentials: 'include'
       });
 
       if (!response.ok) {
-        throw new Error('Failed to run classification');
+        throw new Error('Failed to reclassify');
       }
 
-      let result = await response.json();
-      
-      if (result.success && (result.classified || 0) > 0) {
-        // Refresh data to show new classifications
-        await onDataRefresh();
-        alert(`Classification complete! ${result.classified || 0} emails classified.`);
-      } else {
-        // Optionally prompt to overwrite when nothing new was classified
-        const shouldOverwrite = window.confirm('All emails appear to be classified already. Reclassify all and overwrite existing categories?');
-        if (!shouldOverwrite) {
-          throw new Error(result.message || 'No emails were classified');
-        }
-        const overwriteResponse = await fetch('/api/classify', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ force: true, overwriteExisting: true }),
-          credentials: 'include'
-        });
-        if (!overwriteResponse.ok) {
-          throw new Error('Failed to reclassify with overwrite');
-        }
-        result = await overwriteResponse.json();
-        await onDataRefresh();
-        alert(result.message || `Reclassification complete! ${result.classified || 0} emails updated.`);
-      }
+      const result = await response.json();
+      await onDataRefresh();
+      alert(result.message || `Reclassification complete! ${result.classified || 0} emails updated.`);
     } catch (error) {
-      console.error('Error running classification:', error);
-      onError(error instanceof Error ? error.message : 'Classification failed');
+      console.error('Error running reclassification:', error);
+      onError(error instanceof Error ? error.message : 'Reclassification failed');
     } finally {
       inboxState.setIdle();
     }

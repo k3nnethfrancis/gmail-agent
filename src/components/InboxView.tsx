@@ -3,7 +3,6 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { 
   RefreshCw,
-  Star,
   CircleHelp
 } from 'lucide-react';
 
@@ -285,18 +284,18 @@ export default function InboxView() {
             </div>
           </div>
           <div className="flex items-center space-x-3">
-            {/* Run Classification Button */}
+            {/* Reclassify All Button (overwrite) */}
             <button
               onClick={emailActions.handleRunClassification}
               disabled={inboxState.isClassifying || !inboxState.canStartClassification}
-              className="flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center px-3 py-1.5 bg-red-600 text-white rounded-md hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
             >
               {inboxState.isClassifying ? (
                 <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
               ) : (
-                <Star className="w-4 h-4 mr-2" />
+                <RefreshCw className="w-4 h-4 mr-2" />
               )}
-              {inboxState.isClassifying ? 'Classifying...' : 'Run Classification'}
+              {inboxState.isClassifying ? 'Reclassifying...' : 'Reclassify All'}
             </button>
             
             {/* Refresh Button */}
