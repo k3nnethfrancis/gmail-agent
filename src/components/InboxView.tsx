@@ -21,6 +21,7 @@ export default function InboxView() {
   const [emails, setEmails] = useState<EmailThread[]>([]);
   const [tags, setTags] = useState<TagRecord[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<number | 'unassigned' | 'all'>('all');
+  const [counts, setCounts] = useState<{ total: number; unread: number; important: number; unassigned: number } | null>(null);
   const [selectedEmail, setSelectedEmail] = useState<EmailThread | null>(null);
 
   // Initialize unified state management and error handling
@@ -48,6 +49,7 @@ export default function InboxView() {
 
         setEmails(emailsData.emails || []);
         setTags(tagsData.tags || []);
+        setCounts(emailsData.counts || null);
         
         return { emails: emailsData.emails, tags: tagsData.tags };
       },
@@ -75,6 +77,7 @@ export default function InboxView() {
         const tagsData = await tagsResponse.json();
         setEmails(emailsData.emails || []);
         setTags(tagsData.tags || []);
+        setCounts(emailsData.counts || null);
       }
     } catch (error) {
       console.error('Refresh failed:', error);
@@ -159,6 +162,7 @@ export default function InboxView() {
                         const tagsData = await tagsResponse.json();
                         setEmails(emailsData.emails || []);
                         setTags(tagsData.tags || []);
+                        setCounts(emailsData.counts || null);
                       }
                     } catch (error) {
                       console.error('Failed to refresh after classification:', error);
@@ -293,6 +297,7 @@ export default function InboxView() {
           selectedCategory={selectedCategory}
           onCategorySelect={setSelectedCategory}
           onCreateCategory={emailActions.handleCreateAndAssignCategory}
+          counts={counts ?? undefined}
         />
 
         {/* Email List */}
@@ -300,7 +305,7 @@ export default function InboxView() {
           <div className="px-6 py-4 border-b border-gray-200">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-medium text-gray-900">
-                {selectedCategoryName} ({filteredEmails.length})
+                {selectedCategoryName} ({selectedCategory === 'all' ? (counts?.total ?? filteredEmails.length) : filteredEmails.length})
               </h2>
               
               {/* Bulk Selection Controls */}

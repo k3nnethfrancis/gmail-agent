@@ -44,6 +44,10 @@ For the current local single-user demo, prioritize UI improvements and simple co
   - Files: `src/components/email/EmailList.tsx`
   - Notes: Limit subject width, improve clamp, strip noisy "Preview" text, normalize whitespace
 - Email count display consistency (Issue #10)
+  - Status: In Progress
+  - Branch: `feature/count-consistency`
+  - Files: `src/lib/database.ts`, `src/components/InboxView.tsx`, `src/components/email/CategorySidebar.tsx`
+  - Notes: Use server counts (total/unassigned) for sidebar/header; ensure stability after actions
 - Bulk selection and reclassify selected (Issue #5)
 - Inline category editing on tag click (Issue #6)
 - Add skeleton loaders and standardized error toasts (Inbox/Chat/Calendar)

@@ -14,6 +14,7 @@ interface CategorySidebarProps {
   selectedCategory: number | 'unassigned' | 'all';
   onCategorySelect: (categoryId: number | 'unassigned' | 'all') => void;
   onCreateCategory: (emailId: string, categoryName: string) => Promise<void>;
+  counts?: { total: number; unread: number; important: number; unassigned: number };
 }
 
 export default function CategorySidebar({
@@ -21,7 +22,8 @@ export default function CategorySidebar({
   tags,
   selectedCategory,
   onCategorySelect,
-  onCreateCategory
+  onCreateCategory,
+  counts
 }: CategorySidebarProps) {
   const handleCreateNewCategory = () => {
     const categoryName = prompt('Enter new category name:');
@@ -31,7 +33,7 @@ export default function CategorySidebar({
     }
   };
 
-  const unassignedCount = emails.filter(email => !email.tags || email.tags.length === 0).length;
+  const unassignedCount = counts?.unassigned ?? emails.filter(email => !email.tags || email.tags.length === 0).length;
 
   return (
     <div className="w-64 border-r border-gray-200 bg-gray-50">
@@ -65,8 +67,8 @@ export default function CategorySidebar({
                   <p className="text-xs text-gray-600">View all emails</p>
                 </div>
               </div>
-              <span className="text-sm font-medium">
-                {emails.length}
+              <span className="text-sm font-medium tabular-nums" aria-label={`${counts?.total ?? emails.length} emails`}>
+                {counts?.total ?? emails.length}
               </span>
             </div>
           </button>
