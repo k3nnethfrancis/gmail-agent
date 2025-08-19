@@ -323,15 +323,22 @@ export class EmailService {
   /**
    * Get email count by status
    */
-  getEmailCounts(): { total: number; unread: number; important: number } {
+  getEmailCounts(): { total: number; unread: number; important: number; unassigned: number } {
     const totalStmt = this.db.prepare('SELECT COUNT(*) as count FROM emails');
     const unreadStmt = this.db.prepare('SELECT COUNT(*) as count FROM emails WHERE is_unread = 1');
     const importantStmt = this.db.prepare('SELECT COUNT(*) as count FROM emails WHERE is_important = 1');
+    const unassignedStmt = this.db.prepare(`
+      SELECT COUNT(*) as count
+      FROM emails e
+      LEFT JOIN email_tags et ON e.id = et.email_id
+      WHERE et.email_id IS NULL
+    `);
 
     return {
       total: (totalStmt.get() as { count: number }).count,
       unread: (unreadStmt.get() as { count: number }).count,
       important: (importantStmt.get() as { count: number }).count,
+      unassigned: (unassignedStmt.get() as { count: number }).count,
     };
   }
 }
