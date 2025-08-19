@@ -109,6 +109,7 @@ export default function CategorySidebar({
                   ? 'bg-blue-50 text-blue-700 border border-blue-200'
                   : 'text-gray-700 hover:bg-gray-100'
               }`}
+              title={tag.name}
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-3">
@@ -116,9 +117,11 @@ export default function CategorySidebar({
                     className="w-4 h-4 rounded-full"
                     style={{ backgroundColor: tag.color }}
                   />
-                  <span className="font-medium">{tag.name}</span>
+                  <span className="font-medium truncate max-w-[9rem]" title={tag.name}>{tag.name}</span>
                 </div>
-                <span className="text-sm font-medium">({tag.emailCount})</span>
+                <span className="text-sm font-medium tabular-nums" aria-label={`${tag.emailCount} emails`}>
+                  {tag.emailCount}
+                </span>
               </div>
             </button>
           ))}
