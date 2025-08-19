@@ -309,13 +309,14 @@ export function useEmailActions({
     try {
       inboxState.setClassifying();
       
-      // Run classification on selected emails
+      // Run classification on selected emails (overwrite existing to actually reclassify)
       const response = await fetch('/api/classify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           emailIds: Array.from(selectedEmails),
-          force: true 
+          force: true,
+          overwriteExisting: true
         }),
         credentials: 'include'
       });
@@ -323,6 +324,9 @@ export function useEmailActions({
       if (response.ok) {
         const result = await response.json();
         console.warn(`✅ Bulk reclassification completed: ${result.classified} emails reclassified`);
+        if (result.message) {
+          alert(result.message);
+        }
         
         // Clear selection and refresh data
         clearSelection();
