@@ -48,3 +48,8 @@ docs/engineering-project.md
 data/*.db
 data/*.db-shm
 data/*.db-wal
+
+# example-app-design
+# complete folder and files ignored
+example-app-design/
+
