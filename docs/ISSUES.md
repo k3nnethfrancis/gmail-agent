@@ -29,10 +29,10 @@ For the current local single-user demo, prioritize UI improvements and simple co
 
 ### ✅ Critical Path (Do Now)
 - Fix unread inversion in sync (email badges/counts)
-  - Status: In Progress
+  - Status: Done (merged to dev)
   - Branch: `feature/fix-unread-flag`
   - Files: `src/lib/emailSync.ts`
-  - Notes: Flip `isUnread` to reflect Gmail `UNREAD` label truthfully
+  - Notes: `isUnread` now true when Gmail includes `UNREAD`
 - Sidebar category truncation and tooltips (Issue #9)
   - Status: Done (merged to dev)
   - Branch: `feature/sidebar-truncation-tooltips`
@@ -64,10 +64,10 @@ For the current local single-user demo, prioritize UI improvements and simple co
   
   
 ### 🧪 Unread UI Indicator (for verification)
-- Status: In Progress
+- Status: Done (merged to dev)
 - Branch: `feature/unread-ui-indicator`
 - Files: `src/components/email/EmailList.tsx`
-- Notes: Bold sender + darker subject and small dot with aria-label for unread emails to visually verify unread status
+- Notes: Bold sender + emphasis + dot
 
 ### 🕒 Later To-Dos (Post-Demo)
 - Keep agent tools as-is; later align `agentConfig` with `toolRegistry`
@@ -102,7 +102,7 @@ For the current local single-user demo, prioritize UI improvements and simple co
 
 ### Issue #10: Email Count Display Inconsistency
 **Priority**: HIGH  
-**Status**: 🟡 Ready for Implementation  
+**Status**: ✅ Completed  
 
 **Problem**: Email counts not displaying correctly next to categories  
 **Evidence**: Screenshot shows categories but counts aren't clearly visible  
@@ -223,14 +223,15 @@ const fromAddress = (email.fromAddress || '').toLowerCase();
 
 ---
 
-## 🎯 Next Development Session Priority
+## 🎯 Next Development Session Priority (UI Focus)
 
-**Recommended Implementation Order**:
-1. **Issue #7** - Fix auto-classification (highest user impact)
-2. **Issue #6** - Chat state persistence (user experience)  
-3. **Issue #8** - Widget cleanup (polish)
-
-**Total Estimated Time**: 5-8 hours
+Recommended order to continue UI polish:
+1. Issue #8 - Inbox widget cleanup (align categories, accurate unread, click-through)
+2. Issue #2 - Calendar events not loading (auth + scopes verification)
+3. Issue #12 - Tag styling improvements (visual consistency)
+4. Issue #11 - Inline input positioning polish (editing UX)
+5. New: Compact list view toggle (one-line preview, denser spacing)
+6. New: Email details panel (open thread on the right without full nav change)
 
 ---
 
